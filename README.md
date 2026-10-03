@@ -1,5 +1,9 @@
 # HappySpin
 
+[![CI/CD](https://github.com/qnope/happyspin/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/qnope/happyspin/actions/workflows/ci-cd.yml)
+
+**Essayer en ligne : https://qnope.github.io/happyspin/**
+
 Une roue de la chance pour trancher : saisis une liste de choix, fais tourner la roue, et laisse le sort décider.
 
 Application Flutter pour **iOS**, **Android** et **web**.
@@ -25,7 +29,20 @@ flutter run -d chrome      # web
 ```sh
 flutter analyze
 flutter test
+
+# Tests d'intégration (nécessite chromedriver sur le port 4444)
+flutter drive --driver=test_driver/integration_test.dart \
+  --target=integration_test/app_test.dart -d web-server --browser-name=chrome
 ```
+
+## CI/CD
+
+Le workflow `.github/workflows/ci-cd.yml` tourne sur chaque PR et chaque push sur `main` :
+
+- analyse, format et tests unitaires
+- tests d'intégration dans Chrome
+- builds Android (APK en artefact), iOS (sans signature) et web
+- sur `main`, déploiement du build web sur GitHub Pages si tout est vert
 
 ## Structure
 
