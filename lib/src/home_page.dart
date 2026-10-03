@@ -64,8 +64,8 @@ class _HomePageState extends State<HomePage>
       _physics = WheelPhysics(
         pegCount: _choices.length,
         angle: _rotation,
-        // Between one and one and a half turns per second.
-        velocity: 6 + _random.nextDouble() * 3,
+        // Between 0.7 and 1 turn per second.
+        velocity: 4.5 + _random.nextDouble() * 2,
       );
     });
     _lastTick = Duration.zero;

@@ -19,19 +19,22 @@ class WheelPhysics {
   }
 
   /// Friction slowing the wheel down regardless of the pegs, in rad/s².
-  static const double friction = 0.6;
+  static const double friction = 0.4;
 
   /// Damping ratio of a peg pressed against the pointer, so that the wheel
   /// does not bounce off a peg as hard as it hit it.
   static const double contactDamping = 0.6;
 
+  /// Share of the pointer spring that pushes a peg away once past it.
+  static const double releasePush = 0.3;
+
   /// Energy taken by all the pegs of one full turn, for a wheel of unit
   /// inertia: the more pegs, the softer each of them.
-  static const double pegEnergyPerTurn = 5;
+  static const double pegEnergyPerTurn = 3.5;
 
   /// Natural frequency and damping ratio of the pointer spring.
-  static const double pointerFrequency = 2 * math.pi * 6;
-  static const double pointerDamping = 0.12;
+  static const double pointerFrequency = 2 * math.pi * 9;
+  static const double pointerDamping = 0.15;
 
   /// Integration step, small enough for a peg never to be skipped.
   static const double timeStep = 1 / 600;
@@ -58,9 +61,10 @@ class WheelPhysics {
   // -1: from the right, 0: no peg touching it.
   int _contact = 0;
 
-  // Set when a peg has just slipped past the pointer, until it leaves the
-  // contact zone, so that it does not catch the pointer again.
-  bool _released = false;
+  // Direction in which a peg has just slipped past the pointer (1 or -1),
+  // until it leaves the contact zone, so that it does not catch the pointer
+  // again; 0 otherwise.
+  int _released = 0;
 
   /// Position of the closest peg relative to the pointer, in (-seg/2, seg/2].
   double get pegOffset {
@@ -80,6 +84,11 @@ class WheelPhysics {
         : 0;
     if (_contact > 0) return -stiffness * (d + contactWidth) - damping;
     if (_contact < 0) return stiffness * (contactWidth - d) - damping;
+    // The pointer snapping back nudges the peg it just let go of out of the
+    // way, so that the wheel never stops with a peg under the pointer.
+    if (_released != 0) {
+      return _released * releasePush * stiffness * (contactWidth - d.abs());
+    }
     return 0;
   }
 
@@ -137,14 +146,14 @@ class WheelPhysics {
     final d = pegOffset;
     if (d.abs() >= contactWidth) {
       _contact = 0;
-      _released = false;
+      _released = 0;
     } else if (_contact > 0 && d >= 0 || _contact < 0 && d <= 0) {
       // The peg slipped past the pointer, which snaps back.
+      _released = _contact;
       _contact = 0;
-      _released = true;
       pointerVelocity = 0;
       clicks++;
-    } else if (_contact == 0 && !_released) {
+    } else if (_contact == 0 && _released == 0) {
       _contact = d < 0 ? 1 : -1;
     }
   }
