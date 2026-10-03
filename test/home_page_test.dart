@@ -68,6 +68,27 @@ void main() {
     expect(['Pizza', 'Sushi', 'Burger', 'Salade'], contains(result.data));
   });
 
+  testWidgets('pressing on the spinning wheel brings the result sooner', (
+    tester,
+  ) async {
+    await pump(tester);
+    await tester.tap(find.byKey(const Key('spin')));
+    await tester.pump();
+    final finger = await tester.startGesture(
+      tester.getCenter(find.byKey(const Key('wheel'))),
+    );
+    // A free spin takes at least 3 seconds; held, the wheel stops within 1.5.
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 1000 ~/ 60));
+    }
+    await finger.up();
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 1000 ~/ 60));
+    }
+    expect(find.byKey(const Key('result')), findsOneWidget);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('spin is disabled with fewer than 2 choices', (tester) async {
     await pump(tester);
     await tester.tap(find.byTooltip('Tout effacer'));

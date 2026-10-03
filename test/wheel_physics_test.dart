@@ -164,4 +164,57 @@ void main() {
       expect(wins[i] / spins, closeTo(expected, 0.05), reason: '$wins');
     }
   });
+
+  test('pressing on the wheel stops it much sooner', () {
+    final random = math.Random(17);
+    for (var k = 0; k < 100; k++) {
+      final count = 2 + random.nextInt(10);
+      final angle = random.nextDouble() * fullTurn;
+      final velocity = 4.5 + random.nextDouble() * 2;
+      final free = WheelPhysics(
+        layout: WheelLayout.even(count),
+        angle: angle,
+        velocity: velocity,
+      );
+      final braked = WheelPhysics(
+        layout: WheelLayout.even(count),
+        angle: angle,
+        velocity: velocity,
+      )..braking = true;
+      expect(spin(free), greaterThan(3), reason: 'count=$count');
+      braked.advance(1.5);
+      expect(braked.velocity, 0, reason: 'count=$count');
+      // Once the finger lets go, the wheel quickly settles, never on a peg.
+      braked.braking = false;
+      expect(spin(braked), lessThan(1), reason: 'count=$count');
+      expect(braked.pegOffset.abs(), greaterThan(0.001));
+    }
+  });
+
+  test('braking keeps the draw proportional to the weights', () {
+    final random = math.Random(19);
+    final layout = WheelLayout([1, 3, 1, 5]);
+    final wins = List.filled(4, 0);
+    const spins = 1000;
+    var angle = 0.0;
+    for (var k = 0; k < spins; k++) {
+      final wheel = WheelPhysics(
+        layout: layout,
+        angle: angle,
+        velocity: 4.5 + random.nextDouble() * 2,
+      );
+      // Press on the wheel at some point during the spin, and hold.
+      wheel.advance(random.nextDouble() * 2);
+      wheel.braking = true;
+      wheel.advance(1.5);
+      wheel.braking = false;
+      spin(wheel);
+      angle = wheel.angle;
+      wins[wheel.selectedIndex]++;
+    }
+    for (var i = 0; i < 4; i++) {
+      final expected = layout.sweep(i) / fullTurn;
+      expect(wins[i] / spins, closeTo(expected, 0.05), reason: '$wins');
+    }
+  });
 }

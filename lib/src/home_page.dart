@@ -42,6 +42,8 @@ class _HomePageState extends State<HomePage>
   double _pointer = 0;
   WheelPhysics? _physics;
   Duration _lastTick = Duration.zero;
+  // Fingers pressing on the wheel, which brakes it while it spins.
+  final Set<int> _pressing = {};
 
   bool get _spinning => _physics != null;
 
@@ -198,6 +200,7 @@ class _HomePageState extends State<HomePage>
   void _onTick(Duration elapsed) {
     final physics = _physics!;
     final clicks = physics.clicks;
+    physics.braking = _pressing.isNotEmpty;
     // Cap the step so that a dropped frame does not make the wheel jump.
     final seconds = (elapsed - _lastTick).inMicroseconds / 1e6;
     physics.advance(math.min(seconds, 0.1));
@@ -370,15 +373,21 @@ class _HomePageState extends State<HomePage>
         children: [
           Expanded(
             child: Center(
-              child: GestureDetector(
-                onTap: canSpin ? _spinWheel : null,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: SpinningWheel(
-                    choices: _choices,
-                    weights: _lists!.selected.weights,
-                    rotation: _rotation,
-                    pointerDeflection: _pointer,
+              child: Listener(
+                onPointerDown: (event) => _pressing.add(event.pointer),
+                onPointerUp: (event) => _pressing.remove(event.pointer),
+                onPointerCancel: (event) => _pressing.remove(event.pointer),
+                child: GestureDetector(
+                  key: const Key('wheel'),
+                  onTap: canSpin ? _spinWheel : null,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: SpinningWheel(
+                      choices: _choices,
+                      weights: _lists!.selected.weights,
+                      rotation: _rotation,
+                      pointerDeflection: _pointer,
+                    ),
                   ),
                 ),
               ),

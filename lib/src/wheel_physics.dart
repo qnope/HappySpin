@@ -29,6 +29,9 @@ class WheelPhysics {
   /// Friction slowing the wheel down regardless of the pegs, in rad/s².
   static const double friction = 0.4;
 
+  /// Extra friction while a finger presses on the wheel, in rad/s².
+  static const double brakeFriction = 6;
+
   /// Damping ratio of a peg pressed against the pointer, so that the wheel
   /// does not bounce off a peg as hard as it hit it.
   static const double contactDamping = 0.6;
@@ -60,6 +63,11 @@ class WheelPhysics {
 
   double angle;
   double velocity;
+
+  /// Whether a finger presses on the wheel, slowing it down much faster.
+  bool braking = false;
+
+  double get _friction => braking ? friction + brakeFriction : friction;
 
   /// Pointer deflection, from -1 (bent fully left) to 1 (bent fully right).
   double pointer = 0;
@@ -123,7 +131,9 @@ class WheelPhysics {
     return 0;
   }
 
-  /// Whether the wheel has stopped and the pointer has settled.
+  /// Whether the wheel has stopped and the pointer has settled. A finger
+  /// holding the wheel on a peg does not count: the peg has to settle once
+  /// the finger lets go.
   bool get isAtRest =>
       velocity == 0 &&
       _pegTorque.abs() <= friction &&
@@ -150,6 +160,7 @@ class WheelPhysics {
     _updateContact();
 
     final torque = _pegTorque;
+    final friction = _friction;
     if (velocity == 0 && torque.abs() <= friction) {
       // Static friction holds the wheel.
     } else {
