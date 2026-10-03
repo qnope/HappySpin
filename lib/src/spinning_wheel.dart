@@ -12,10 +12,15 @@ class SpinningWheel extends StatelessWidget {
     super.key,
     required this.choices,
     required this.rotation,
+    this.weights,
     this.pointerDeflection = 0,
   });
 
   final List<String> choices;
+
+  /// How wide each choice's segment is, relative to the others; all the
+  /// same size when null.
+  final List<int>? weights;
   final double rotation;
 
   /// How much the pegs bend the pointer, from -1 (left) to 1 (right).
@@ -41,6 +46,9 @@ class SpinningWheel extends StatelessWidget {
                 size: Size.infinite,
                 painter: _WheelPainter(
                   choices: choices,
+                  layout: choices.isEmpty
+                      ? null
+                      : WheelLayout(weights ?? List.filled(choices.length, 1)),
                   palette: palette,
                   rimColor: scheme.surface,
                   emptyColor: scheme.surfaceContainerHighest,
@@ -85,12 +93,14 @@ class SpinningWheel extends StatelessWidget {
 class _WheelPainter extends CustomPainter {
   _WheelPainter({
     required this.choices,
+    required this.layout,
     required this.palette,
     required this.rimColor,
     required this.emptyColor,
   });
 
   final List<String> choices;
+  final WheelLayout? layout;
   final WheelPalette palette;
   final Color rimColor;
   final Color emptyColor;
@@ -101,12 +111,13 @@ class _WheelPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    if (choices.isEmpty) {
+    final layout = this.layout;
+    if (layout == null) {
       canvas.drawCircle(center, radius, Paint()..color = emptyColor);
     } else {
-      final seg = segmentAngle(choices.length);
       for (var i = 0; i < choices.length; i++) {
-        final start = -math.pi / 2 + i * seg;
+        final start = -math.pi / 2 + layout.start(i);
+        final seg = layout.sweep(i);
         canvas.drawArc(
           rect,
           start,
@@ -139,12 +150,18 @@ class _WheelPainter extends CustomPainter {
         ..strokeWidth = 6,
     );
 
-    if (choices.length > 1) _paintPegs(canvas, center, radius);
+    if (layout != null && choices.length > 1) {
+      _paintPegs(canvas, center, radius, layout);
+    }
   }
 
   /// One peg in the middle of each segment, near the rim.
-  void _paintPegs(Canvas canvas, Offset center, double radius) {
-    final seg = segmentAngle(choices.length);
+  void _paintPegs(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    WheelLayout layout,
+  ) {
     final pegRadius = math.max(4.0, radius * 0.032);
     final distance = radius - 5 - pegRadius * 1.5;
     final fill = Paint()..color = const Color(0xFFF5F5F5);
@@ -153,7 +170,7 @@ class _WheelPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (var i = 0; i < choices.length; i++) {
-      final angle = -math.pi / 2 + (i + 0.5) * seg;
+      final angle = -math.pi / 2 + layout.middle(i);
       final peg = center + Offset(math.cos(angle), math.sin(angle)) * distance;
       canvas.drawCircle(
         peg + const Offset(0, 1),
@@ -174,7 +191,7 @@ class _WheelPainter extends CustomPainter {
     String text,
   ) {
     final maxWidth = radius * 0.56;
-    final fontSize = math.min(18.0, math.max(10.0, radius * seg * 0.35));
+    final fontSize = math.min(18.0, math.max(9.0, radius * seg * 0.35));
     final painter = TextPainter(
       text: TextSpan(
         text: text,
@@ -206,6 +223,7 @@ class _WheelPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WheelPainter old) =>
       old.choices != choices ||
+      old.layout != layout ||
       old.palette != palette ||
       old.rimColor != rimColor ||
       old.emptyColor != emptyColor;

@@ -47,6 +47,8 @@ class _HomePageState extends State<HomePage>
 
   List<String> get _choices => _lists!.selected.choices;
 
+  WheelLayout get _layout => WheelLayout(_lists!.selected.weights);
+
   @override
   void initState() {
     super.initState();
@@ -71,15 +73,15 @@ class _HomePageState extends State<HomePage>
     _store.save(updated).catchError((Object _) {});
   }
 
-  void _setChoices(List<String> choices) {
+  void _setSelected(ChoiceList list) {
     final lists = [..._lists!.lists];
-    lists[_lists!.current] = _lists!.selected.copyWith(choices: choices);
+    lists[_lists!.current] = list;
     _updateLists(lists, _lists!.current);
   }
 
   void _resetRotation() {
     // Keep the pointer inside the first choice, away from its peg.
-    setState(() => _rotation = -segmentAngle(math.max(_choices.length, 1)) / 4);
+    setState(() => _rotation = _choices.isEmpty ? 0 : -_layout.sweep(0) / 4);
   }
 
   void _selectList(int index) {
@@ -162,24 +164,28 @@ class _HomePageState extends State<HomePage>
   void _addChoice() {
     final text = _input.text.trim();
     if (text.isEmpty) return;
-    _setChoices([..._choices, text]);
+    _setSelected(_lists!.selected.withChoice(text));
     _input.clear();
     _inputFocus.requestFocus();
   }
 
   void _removeChoice(int index) {
-    _setChoices([..._choices]..removeAt(index));
+    _setSelected(_lists!.selected.withoutChoice(index));
+  }
+
+  void _setWeight(int index, int weight) {
+    _setSelected(_lists!.selected.withWeight(index, weight));
   }
 
   void _clearChoices() {
-    _setChoices([]);
+    _setSelected(_lists!.selected.copyWith(choices: [], weights: []));
   }
 
   void _spinWheel() {
     if (_spinning || _choices.length < 2) return;
     setState(() {
       _physics = WheelPhysics(
-        pegCount: _choices.length,
+        layout: _layout,
         angle: _rotation,
         // Between 0.7 and 1 turn per second.
         velocity: 4.5 + _random.nextDouble() * 2,
@@ -370,6 +376,7 @@ class _HomePageState extends State<HomePage>
                   constraints: const BoxConstraints(maxWidth: 520),
                   child: SpinningWheel(
                     choices: _choices,
+                    weights: _lists!.selected.weights,
                     rotation: _rotation,
                     pointerDeflection: _pointer,
                   ),
@@ -393,6 +400,40 @@ class _HomePageState extends State<HomePage>
         ],
       ),
     );
+  }
+
+  /// Buttons making the choice at [index] more or less likely.
+  List<Widget> _buildWeightStepper(int index) {
+    final weight = _lists!.selected.weightOf(index);
+    return [
+      IconButton(
+        key: Key('lighter$index'),
+        tooltip: 'Moins de chances',
+        visualDensity: VisualDensity.compact,
+        onPressed: _spinning || weight <= ChoiceList.minWeight
+            ? null
+            : () => _setWeight(index, weight - 1),
+        icon: const Icon(Icons.remove_circle_outline),
+      ),
+      SizedBox(
+        width: 28,
+        child: Text(
+          '×$weight',
+          key: Key('weight$index'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      IconButton(
+        key: Key('heavier$index'),
+        tooltip: 'Plus de chances',
+        visualDensity: VisualDensity.compact,
+        onPressed: _spinning || weight >= ChoiceList.maxWeight
+            ? null
+            : () => _setWeight(index, weight + 1),
+        icon: const Icon(Icons.add_circle_outline),
+      ),
+    ];
   }
 
   Widget _buildEditor() {
@@ -435,10 +476,22 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       title: Text(_choices[i]),
-                      trailing: IconButton(
-                        tooltip: 'Retirer',
-                        onPressed: _spinning ? null : () => _removeChoice(i),
-                        icon: const Icon(Icons.close),
+                      subtitle: Text(
+                        _chanceLabel(_lists!.selected.chanceOf(i)),
+                        key: Key('chance$i'),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ..._buildWeightStepper(i),
+                          IconButton(
+                            tooltip: 'Retirer',
+                            onPressed: _spinning
+                                ? null
+                                : () => _removeChoice(i),
+                            icon: const Icon(Icons.close),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -447,6 +500,13 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
+}
+
+/// "25 %", in the French style, for a [chance] between 0 and 1.
+String _chanceLabel(double chance) {
+  final percent = chance * 100;
+  if (percent > 0 && percent < 1) return '< 1\u00a0%';
+  return '${percent.round()}\u00a0%';
 }
 
 class _ListNameDialog extends StatefulWidget {

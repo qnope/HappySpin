@@ -2,21 +2,68 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// A named list of choices, one per wheel.
+/// A named list of choices, one per wheel, each with a weight.
 class ChoiceList {
-  const ChoiceList({required this.name, required this.choices});
+  /// [weights] go with [choices] one for one; missing ones count as 1.
+  const ChoiceList({required this.name, required this.choices, this._weights});
+
+  /// Smallest and largest weight a choice can have.
+  static const int minWeight = 1;
+  static const int maxWeight = 10;
 
   final String name;
   final List<String> choices;
+  final List<int>? _weights;
 
-  ChoiceList copyWith({String? name, List<String>? choices}) =>
-      ChoiceList(name: name ?? this.name, choices: choices ?? this.choices);
+  /// How likely each choice is, relative to the others.
+  List<int> get weights => [
+    for (var i = 0; i < choices.length; i++) weightOf(i),
+  ];
 
-  Map<String, Object?> toJson() => {'name': name, 'choices': choices};
+  int weightOf(int index) {
+    final weights = _weights;
+    if (weights == null || index >= weights.length) return 1;
+    return weights[index].clamp(minWeight, maxWeight);
+  }
+
+  /// Chance of picking the choice at [index], between 0 and 1.
+  double chanceOf(int index) {
+    final total = weights.fold(0, (sum, w) => sum + w);
+    return weightOf(index) / total;
+  }
+
+  ChoiceList copyWith({
+    String? name,
+    List<String>? choices,
+    List<int>? weights,
+  }) => ChoiceList(
+    name: name ?? this.name,
+    choices: choices ?? this.choices,
+    weights: weights ?? (choices == null ? _weights : null),
+  );
+
+  ChoiceList withChoice(String choice, {int weight = 1}) =>
+      copyWith(choices: [...choices, choice], weights: [...weights, weight]);
+
+  ChoiceList withoutChoice(int index) => copyWith(
+    choices: [...choices]..removeAt(index),
+    weights: weights..removeAt(index),
+  );
+
+  ChoiceList withWeight(int index, int weight) =>
+      copyWith(weights: weights..[index] = weight.clamp(minWeight, maxWeight));
+
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'choices': choices,
+    'weights': weights,
+  };
 
   factory ChoiceList.fromJson(Map<String, Object?> json) => ChoiceList(
     name: json['name'] as String,
     choices: (json['choices'] as List).cast<String>(),
+    // Lists saved before weights existed have none: every choice weighs 1.
+    weights: (json['weights'] as List?)?.cast<int>(),
   );
 }
 

@@ -156,4 +156,66 @@ void main() {
     expect(listName(tester), 'Repas');
     expect(store.saved, isNull);
   });
+
+  testWidgets('weights make a choice more likely and are saved', (
+    tester,
+  ) async {
+    final store = await pump(tester);
+    String text(String key) => tester.widget<Text>(find.byKey(Key(key))).data!;
+    expect(text('weight0'), '×1');
+    expect(text('chance0'), '25\u00a0%');
+
+    await tester.tap(find.byKey(const Key('heavier0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('heavier0')));
+    await tester.pump();
+    expect(text('weight0'), '×3');
+    expect(text('chance0'), '50\u00a0%');
+    expect(text('chance1'), '17\u00a0%');
+    expect(store.saved!.selected.weights, [3, 1, 1, 1]);
+
+    await tester.tap(find.byKey(const Key('lighter0')));
+    await tester.pump();
+    expect(store.saved!.selected.weights, [2, 1, 1, 1]);
+
+    // A weight cannot go below 1.
+    final lighter = tester.widget<IconButton>(
+      find.byKey(const Key('lighter1')),
+    );
+    expect(lighter.onPressed, isNull);
+
+    // Removing a choice keeps the weights of the others.
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'Sushi'),
+        matching: find.byIcon(Icons.close),
+      ),
+    );
+    await tester.pump();
+    expect(store.saved!.selected.choices, ['Pizza', 'Burger', 'Salade']);
+    expect(store.saved!.selected.weights, [2, 1, 1]);
+    expect(text('chance0'), '50\u00a0%');
+  });
+
+  testWidgets('a heavy choice still spins to a result', (tester) async {
+    await pump(
+      tester,
+      store: MemoryChoiceListStore(
+        ChoiceLists(
+          lists: const [
+            ChoiceList(
+              name: 'Repas',
+              choices: ['Pizza', 'Sushi'],
+              weights: [10, 1],
+            ),
+          ],
+          current: 0,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('spin')));
+    await tester.pumpAndSettle();
+    final result = tester.widget<Text>(find.byKey(const Key('result')));
+    expect(['Pizza', 'Sushi'], contains(result.data));
+  });
 }

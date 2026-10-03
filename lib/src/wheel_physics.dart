@@ -11,11 +11,19 @@ import 'wheel_math.dart';
 /// is lost by the wheel, so the wheel slows down a little on every peg, and
 /// when it is too slow to get past one it bounces back off it.
 class WheelPhysics {
-  WheelPhysics({required this.pegCount, required this.angle, this.velocity = 0})
-    : assert(pegCount >= 2),
-      contactWidth = math.min(0.07, segmentAngle(pegCount) * 0.3) {
-    final pegEnergy = pegEnergyPerTurn / pegCount;
-    stiffness = 2 * pegEnergy / (contactWidth * contactWidth);
+  WheelPhysics({required this.layout, required this.angle, this.velocity = 0})
+    : assert(layout.count >= 2),
+      contactWidth = math.min(0.07, layout.minMiddleGap * 0.3) {
+    // Each peg takes as much energy as its segment is wide, so that the
+    // chance of stopping on a segment matches its size on the wheel.
+    stiffnesses = [
+      for (var i = 0; i < layout.count; i++)
+        2 *
+            pegEnergyPerTurn *
+            layout.sweep(i) /
+            fullTurn /
+            (contactWidth * contactWidth),
+    ];
   }
 
   /// Friction slowing the wheel down regardless of the pegs, in rad/s².
@@ -39,13 +47,16 @@ class WheelPhysics {
   /// Integration step, small enough for a peg never to be skipped.
   static const double timeStep = 1 / 600;
 
-  final int pegCount;
+  /// The segments of the wheel, with one peg in the middle of each.
+  final WheelLayout layout;
+
+  int get pegCount => layout.count;
 
   /// Half-width of the zone where a peg touches the pointer.
   final double contactWidth;
 
-  /// Spring constant of the pointer, felt by the wheel through the pegs.
-  late final double stiffness;
+  /// Spring constant of the pointer felt by the wheel through each peg.
+  late final List<double> stiffnesses;
 
   double angle;
   double velocity;
@@ -66,17 +77,37 @@ class WheelPhysics {
   // again; 0 otherwise.
   int _released = 0;
 
-  /// Position of the closest peg relative to the pointer, in (-seg/2, seg/2].
+  // Closest peg to the pointer, and its position relative to the pointer,
+  // as of the last time the wheel moved.
+  int _peg = 0;
+  double _pegOffset = 0;
+  double? _pegAngle;
+
+  void _findClosestPeg() {
+    if (_pegAngle == angle) return;
+    _pegAngle = angle;
+    var best = double.infinity;
+    for (var i = 0; i < layout.count; i++) {
+      var d = normalizeAngle(angle + layout.middle(i));
+      if (d > math.pi) d -= fullTurn;
+      if (d.abs() < best.abs()) {
+        best = d;
+        _peg = i;
+      }
+    }
+    _pegOffset = best;
+  }
+
+  /// Position of the closest peg relative to the pointer, in (-π, π].
   double get pegOffset {
-    final seg = segmentAngle(pegCount);
-    // Peg i sits in the middle of segment i, at (i + 0.5) * seg.
-    final d = normalizeAngle(angle + seg / 2) % seg;
-    return d > seg / 2 ? d - seg : d;
+    _findClosestPeg();
+    return _pegOffset;
   }
 
   /// Torque applied by the pointer on the wheel through the touching peg.
   double get _pegTorque {
     final d = pegOffset;
+    final stiffness = stiffnesses[_peg];
     // Only damp the wheel when it is pushed back off the peg.
     final bouncing = _contact * velocity < 0;
     final damping = bouncing
@@ -159,5 +190,5 @@ class WheelPhysics {
   }
 
   /// Index of the segment under the pointer.
-  int get selectedIndex => indexAtRotation(angle, pegCount);
+  int get selectedIndex => layout.indexAtRotation(angle);
 }
