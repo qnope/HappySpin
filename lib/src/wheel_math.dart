@@ -19,21 +19,3 @@ int indexAtRotation(double rotation, int count) {
   final local = normalizeAngle(-rotation);
   return (local / segmentAngle(count)).floor() % count;
 }
-
-/// Final rotation that lands segment [target] under the pointer, starting
-/// from [current] and spinning clockwise at least [minTurns] full turns.
-///
-/// [offset] in (-0.5, 0.5) shifts the landing point inside the segment so
-/// the wheel does not always stop dead center.
-double targetRotation({
-  required double current,
-  required int target,
-  required int count,
-  int minTurns = 5,
-  double offset = 0,
-}) {
-  final seg = segmentAngle(count);
-  final wanted = normalizeAngle(-(target + 0.5 + offset) * seg);
-  final delta = normalizeAngle(wanted - normalizeAngle(current));
-  return current + minTurns * fullTurn + delta;
-}
