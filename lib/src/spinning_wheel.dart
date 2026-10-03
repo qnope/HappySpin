@@ -2,27 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'wheel_math.dart';
-
-const List<Color> wheelPalette = [
-  Color(0xFFFF7A59),
-  Color(0xFFFFC145),
-  Color(0xFF5BC0BE),
-  Color(0xFF6C63FF),
-  Color(0xFFEF476F),
-  Color(0xFF06D6A0),
-  Color(0xFF118AB2),
-  Color(0xFFF78C6B),
-];
-
-/// Color of segment [index] on a wheel of [count] segments.
-Color wheelColor(int index, int count) {
-  // Avoid two identical neighbours where the wheel wraps around.
-  if (count > 1 && index == count - 1 && count % wheelPalette.length == 1) {
-    return wheelPalette[(index + 1) % wheelPalette.length];
-  }
-  return wheelPalette[index % wheelPalette.length];
-}
 
 /// A wheel split into one segment per choice, rotated by [rotation] radians,
 /// with a peg in the middle of each segment and a springy pointer at the top.
@@ -46,6 +27,7 @@ class SpinningWheel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final palette = WheelTheme.of(context);
     return AspectRatio(
       aspectRatio: 1,
       child: Stack(
@@ -59,6 +41,7 @@ class SpinningWheel extends StatelessWidget {
                 size: Size.infinite,
                 painter: _WheelPainter(
                   choices: choices,
+                  palette: palette,
                   rimColor: scheme.surface,
                   emptyColor: scheme.surfaceContainerHighest,
                 ),
@@ -99,11 +82,13 @@ class SpinningWheel extends StatelessWidget {
 class _WheelPainter extends CustomPainter {
   _WheelPainter({
     required this.choices,
+    required this.palette,
     required this.rimColor,
     required this.emptyColor,
   });
 
   final List<String> choices;
+  final WheelPalette palette;
   final Color rimColor;
   final Color emptyColor;
 
@@ -124,7 +109,7 @@ class _WheelPainter extends CustomPainter {
           start,
           seg,
           true,
-          Paint()..color = wheelColor(i, choices.length),
+          Paint()..color = palette.segmentColor(i, choices.length),
         );
         if (choices.length > 1) {
           canvas.drawArc(
@@ -191,10 +176,12 @@ class _WheelPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: Colors.white,
+          color: palette.labelColor,
           fontSize: fontSize,
           fontWeight: FontWeight.w700,
-          shadows: const [Shadow(blurRadius: 3, color: Colors.black45)],
+          shadows: palette.labelColor == Colors.white
+              ? const [Shadow(blurRadius: 3, color: Colors.black45)]
+              : null,
         ),
       ),
       maxLines: 1,
@@ -216,6 +203,7 @@ class _WheelPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WheelPainter old) =>
       old.choices != choices ||
+      old.palette != palette ||
       old.rimColor != rimColor ||
       old.emptyColor != emptyColor;
 }

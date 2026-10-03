@@ -4,19 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'app_theme.dart';
 import 'choice_lists.dart';
 import 'spinning_wheel.dart';
 import 'wheel_math.dart';
 import 'wheel_physics.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.random, this.store});
+  const HomePage({super.key, this.random, this.store, this.themeController});
 
   /// Injectable for tests; defaults to a fresh [math.Random].
   final math.Random? random;
 
   /// Injectable for tests; defaults to storage on the device.
   final ChoiceListStore? store;
+
+  /// Changes the app's theme; the theme button is hidden without it.
+  final AppThemeController? themeController;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -239,6 +243,13 @@ class _HomePageState extends State<HomePage>
         title: _buildListMenu(),
         centerTitle: true,
         actions: [
+          if (widget.themeController case final controller?)
+            IconButton(
+              key: const Key('themeButton'),
+              tooltip: 'Thème',
+              onPressed: () => ThemeSheet.show(context, controller),
+              icon: const Icon(Icons.palette_outlined),
+            ),
           IconButton(
             tooltip: 'Tout effacer',
             onPressed: _choices.isEmpty || _spinning ? null : _clearChoices,
@@ -385,6 +396,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildEditor() {
+    final palette = WheelTheme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
@@ -417,7 +429,10 @@ class _HomePageState extends State<HomePage>
                       dense: true,
                       leading: CircleAvatar(
                         radius: 8,
-                        backgroundColor: wheelColor(i, _choices.length),
+                        backgroundColor: palette.segmentColor(
+                          i,
+                          _choices.length,
+                        ),
                       ),
                       title: Text(_choices[i]),
                       trailing: IconButton(
