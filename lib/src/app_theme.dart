@@ -10,6 +10,7 @@ class WheelPalette {
     required this.name,
     required this.seed,
     required this.colors,
+    required this.pointerColor,
     this.labelColor = Colors.white,
   });
 
@@ -20,6 +21,9 @@ class WheelPalette {
   /// Color the app's Material color scheme is derived from.
   final Color seed;
   final List<Color> colors;
+
+  /// Color of the pointer at the top of the wheel.
+  final Color pointerColor;
 
   /// Color of the choice names written on the wheel.
   final Color labelColor;
@@ -35,6 +39,7 @@ class WheelPalette {
 
   static const festive = WheelPalette(
     id: 'festive',
+    pointerColor: Color(0xFFD7263D),
     name: 'Festif',
     seed: Color(0xFFFF7A59),
     colors: [
@@ -51,6 +56,7 @@ class WheelPalette {
 
   static const ocean = WheelPalette(
     id: 'ocean',
+    pointerColor: Color(0xFFF4A261),
     name: 'Océan',
     seed: Color(0xFF0077B6),
     colors: [
@@ -67,6 +73,7 @@ class WheelPalette {
 
   static const forest = WheelPalette(
     id: 'forest',
+    pointerColor: Color(0xFFE9B949),
     name: 'Forêt',
     seed: Color(0xFF2D6A4F),
     colors: [
@@ -83,6 +90,7 @@ class WheelPalette {
 
   static const candy = WheelPalette(
     id: 'candy',
+    pointerColor: Color(0xFF8E4FB0),
     name: 'Bonbon',
     seed: Color(0xFFE07A9B),
     labelColor: Color(0xFF3D2C3E),
