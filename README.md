@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/qnope/happyspin/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/qnope/happyspin/actions/workflows/ci-cd.yml)
 
-**Essayer en ligne : https://qnope.github.io/happyspin/**
+**Essayer en ligne : https://qnope.github.io/HappySpin/**
 
 Une roue de la chance pour trancher : saisis une liste de choix, fais tourner la roue, et laisse le sort décider.
 
