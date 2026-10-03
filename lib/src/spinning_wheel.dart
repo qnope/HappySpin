@@ -57,7 +57,10 @@ class SpinningWheel extends StatelessWidget {
               alignment: const Alignment(0, -0.27),
               child: CustomPaint(
                 size: const Size(32, 44),
-                painter: _PointerPainter(scheme.onSurface),
+                painter: _PointerPainter(
+                  color: palette.pointerColor,
+                  outline: Colors.white,
+                ),
               ),
             ),
           ),
@@ -209,26 +212,75 @@ class _WheelPainter extends CustomPainter {
 }
 
 class _PointerPainter extends CustomPainter {
-  _PointerPainter(this.color);
+  _PointerPainter({required this.color, required this.outline});
 
   final Color color;
+  final Color outline;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // A rounded flap hanging from a pivot, ending in a sharp tip.
+    // An arrowhead with a rounded top, its sides curving in to a sharp tip.
     final w = size.width;
     final pivot = Offset(w / 2, w / 2);
+    final tip = Offset(w / 2, size.height - 1);
+    const top = 3.0;
+    const corner = 7.0;
     final path = Path()
-      ..moveTo(w / 2, size.height)
-      ..lineTo(0, pivot.dy)
-      ..arcToPoint(Offset(w, pivot.dy), radius: Radius.circular(w / 2))
-      ..lineTo(w / 2, size.height)
+      ..moveTo(tip.dx, tip.dy)
+      ..quadraticBezierTo(2, size.height * 0.55, 2, top + corner)
+      ..quadraticBezierTo(2, top, 2 + corner, top)
+      ..lineTo(w - 2 - corner, top)
+      ..quadraticBezierTo(w - 2, top, w - 2, top + corner)
+      ..quadraticBezierTo(w - 2, size.height * 0.55, tip.dx, tip.dy)
       ..close();
-    canvas.drawShadow(path, Colors.black, 3, false);
-    canvas.drawPath(path, Paint()..color = color);
-    canvas.drawCircle(pivot, w * 0.16, Paint()..color = Colors.white70);
+
+    canvas.drawShadow(path, Colors.black, 4, false);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(color, Colors.white, 0.35)!,
+            color,
+            Color.lerp(color, Colors.black, 0.3)!,
+          ],
+          stops: const [0, 0.45, 1],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = outline
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    // A small polished screw holding the pointer.
+    final screw = w * 0.15;
+    canvas.drawCircle(
+      pivot,
+      screw,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.4, -0.4),
+          colors: [Colors.white, outline, Color.lerp(outline, color, 0.5)!],
+          stops: const [0, 0.6, 1],
+        ).createShader(Rect.fromCircle(center: pivot, radius: screw)),
+    );
+    canvas.drawCircle(
+      pivot,
+      screw,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, 0.4)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
   }
 
   @override
-  bool shouldRepaint(_PointerPainter old) => old.color != color;
+  bool shouldRepaint(_PointerPainter old) =>
+      old.color != color || old.outline != outline;
 }
