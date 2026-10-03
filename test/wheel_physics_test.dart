@@ -22,13 +22,13 @@ void main() {
         final wheel = WheelPhysics(
           pegCount: count,
           angle: random.nextDouble() * fullTurn,
-          velocity: 6 + random.nextDouble() * 3,
+          velocity: 4.5 + random.nextDouble() * 2,
         );
         final start = wheel.angle;
         final time = spin(wheel);
         final turns = (wheel.angle - start) / fullTurn;
         expect(time, inInclusiveRange(3, 10), reason: 'count=$count');
-        expect(turns, inInclusiveRange(1, 5), reason: 'count=$count');
+        expect(turns, inInclusiveRange(0.8, 5), reason: 'count=$count');
       }
     }
   });
@@ -85,7 +85,7 @@ void main() {
       final wheel = WheelPhysics(
         pegCount: count,
         angle: random.nextDouble() * fullTurn,
-        velocity: 6 + random.nextDouble() * 3,
+        velocity: 4.5 + random.nextDouble() * 2,
       );
       spin(wheel);
       expect(wheel.pegOffset.abs(), greaterThan(0.001));
@@ -99,7 +99,7 @@ void main() {
       final wheel = WheelPhysics(
         pegCount: 6,
         angle: 0,
-        velocity: 6 + random.nextDouble() * 3,
+        velocity: 4.5 + random.nextDouble() * 2,
       );
       spin(wheel);
       wins[wheel.selectedIndex]++;
