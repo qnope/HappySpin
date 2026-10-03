@@ -1,11 +1,11 @@
 {
-    "name": "happyspin",
-    "short_name": "happyspin",
+    "name": "HappySpin",
+    "short_name": "HappySpin",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#2B2556",
+    "theme_color": "#2B2556",
+    "description": "Une roue de la chance pour tirer un choix au hasard.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
