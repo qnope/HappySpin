@@ -6,12 +6,21 @@ import 'package:integration_test/integration_test.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('add choices, spin and get a result', (tester) async {
+  testWidgets('create a list, add choices, spin and get a result', (
+    tester,
+  ) async {
     await tester.pumpWidget(const HappySpinApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Tout effacer'));
+    await tester.tap(find.byKey(const Key('listMenu')));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('newList')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('listNameInput')), 'Sorties');
+    await tester.tap(find.byKey(const Key('confirmListName')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('listName')), findsOneWidget);
+    expect(find.text('Sorties'), findsOneWidget);
     expect(find.text('Ajoute au moins 2 choix'), findsOneWidget);
 
     for (final choice in ['Cinéma', 'Resto', 'Balade']) {

@@ -10,6 +10,8 @@ Application Flutter pour **iOS**, **Android** et **web**.
 
 ## Fonctionnalités
 
+- Plusieurs listes de choix : création, changement, renommage et suppression depuis le titre
+- Listes sauvegardées sur l'appareil (stockage local du navigateur sur le web)
 - Ajout et suppression de choix
 - Roue colorée qui se redessine à chaque modification
 - Animation de rotation avec décélération, tirage uniforme
@@ -50,4 +52,5 @@ Le workflow `.github/workflows/ci-cd.yml` tourne sur chaque PR et chaque push su
 | --- | --- |
 | `lib/src/wheel_math.dart` | Calculs d'angle : segment sous le pointeur, rotation cible |
 | `lib/src/spinning_wheel.dart` | Dessin de la roue et du pointeur |
-| `lib/src/home_page.dart` | Écran principal : liste des choix, animation, résultat |
+| `lib/src/choice_lists.dart` | Listes de choix et leur sauvegarde sur l'appareil |
+| `lib/src/home_page.dart` | Écran principal : listes et choix, animation, résultat |
