@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'wheel_math.dart';
 
-/// Simulation of a wheel with one peg on each segment boundary, slowed down
+/// Simulation of a wheel with one peg in the middle of each segment, slowed down
 /// by friction and by a springy pointer that each peg has to push aside.
 ///
 /// Angles are in radians, clockwise, with the pointer at the top. A peg
@@ -65,7 +65,8 @@ class WheelPhysics {
   /// Position of the closest peg relative to the pointer, in (-seg/2, seg/2].
   double get pegOffset {
     final seg = segmentAngle(pegCount);
-    final d = normalizeAngle(angle) % seg;
+    // Peg i sits in the middle of segment i, at (i + 0.5) * seg.
+    final d = normalizeAngle(angle + seg / 2) % seg;
     return d > seg / 2 ? d - seg : d;
   }
 

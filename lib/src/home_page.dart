@@ -26,8 +26,8 @@ class _HomePageState extends State<HomePage>
   final FocusNode _inputFocus = FocusNode();
 
   List<String> _choices = ['Pizza', 'Sushi', 'Burger', 'Salade'];
-  // Start with the first choice under the pointer rather than a peg.
-  double _rotation = -segmentAngle(4) / 2;
+  // Start with the pointer inside the first choice, away from its peg.
+  double _rotation = -segmentAngle(4) / 4;
   double _pointer = 0;
   WheelPhysics? _physics;
   Duration _lastTick = Duration.zero;

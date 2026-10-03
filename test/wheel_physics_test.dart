@@ -38,7 +38,9 @@ void main() {
     final start = wheel.angle;
     spin(wheel);
     final seg = segmentAngle(8);
-    final crossed = (wheel.angle / seg).floor() - (start / seg).floor();
+    // Pegs sit in the middle of the segments.
+    int pegsBefore(double angle) => ((angle + seg / 2) / seg).floor();
+    final crossed = pegsBefore(wheel.angle) - pegsBefore(start);
     expect(wheel.clicks, crossed);
   });
 
