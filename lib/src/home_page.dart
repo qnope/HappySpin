@@ -4,15 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'choice_lists.dart';
 import 'spinning_wheel.dart';
 import 'wheel_math.dart';
 import 'wheel_physics.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.random});
+  const HomePage({super.key, this.random, this.store});
 
   /// Injectable for tests; defaults to a fresh [math.Random].
   final math.Random? random;
+
+  /// Injectable for tests; defaults to storage on the device.
+  final ChoiceListStore? store;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -25,7 +29,10 @@ class _HomePageState extends State<HomePage>
   final TextEditingController _input = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
 
-  List<String> _choices = ['Pizza', 'Sushi', 'Burger', 'Salade'];
+  late final ChoiceListStore _store =
+      widget.store ?? PreferencesChoiceListStore();
+
+  ChoiceLists? _lists;
   // Start with the pointer inside the first choice, away from its peg.
   double _rotation = -segmentAngle(4) / 4;
   double _pointer = 0;
@@ -33,6 +40,112 @@ class _HomePageState extends State<HomePage>
   Duration _lastTick = Duration.zero;
 
   bool get _spinning => _physics != null;
+
+  List<String> get _choices => _lists!.selected.choices;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLists();
+  }
+
+  Future<void> _loadLists() async {
+    ChoiceLists? saved;
+    try {
+      saved = await _store.load();
+    } on Object {
+      // Start from the default list if storage is unavailable.
+    }
+    if (!mounted) return;
+    setState(() => _lists = saved ?? ChoiceLists.initial());
+    _resetRotation();
+  }
+
+  void _updateLists(List<ChoiceList> lists, int current) {
+    final updated = ChoiceLists(lists: lists, current: current);
+    setState(() => _lists = updated);
+    _store.save(updated).catchError((Object _) {});
+  }
+
+  void _setChoices(List<String> choices) {
+    final lists = [..._lists!.lists];
+    lists[_lists!.current] = _lists!.selected.copyWith(choices: choices);
+    _updateLists(lists, _lists!.current);
+  }
+
+  void _resetRotation() {
+    // Keep the pointer inside the first choice, away from its peg.
+    setState(() => _rotation = -segmentAngle(math.max(_choices.length, 1)) / 4);
+  }
+
+  void _selectList(int index) {
+    _updateLists(_lists!.lists, index);
+    _resetRotation();
+  }
+
+  Future<void> _createList() async {
+    final name = await _askListName(title: 'Nouvelle liste', action: 'Créer');
+    if (name == null) return;
+    _updateLists([
+      ..._lists!.lists,
+      ChoiceList(name: name, choices: const []),
+    ], _lists!.lists.length);
+    _resetRotation();
+    _inputFocus.requestFocus();
+  }
+
+  Future<void> _renameList() async {
+    final name = await _askListName(
+      title: 'Renommer la liste',
+      action: 'Renommer',
+      initial: _lists!.selected.name,
+    );
+    if (name == null) return;
+    final lists = [..._lists!.lists];
+    lists[_lists!.current] = _lists!.selected.copyWith(name: name);
+    _updateLists(lists, _lists!.current);
+  }
+
+  Future<void> _deleteList() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer la liste ?'),
+        content: Text(
+          '« ${_lists!.selected.name} » et ses choix seront perdus.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            key: const Key('confirmDeleteList'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final current = _lists!.current;
+    _updateLists([..._lists!.lists]..removeAt(current), current - 1);
+    _resetRotation();
+  }
+
+  Future<String?> _askListName({
+    required String title,
+    required String action,
+    String initial = '',
+  }) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) =>
+          _ListNameDialog(title: title, action: action, initial: initial),
+    );
+    final trimmed = name?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
+  }
 
   @override
   void dispose() {
@@ -45,17 +158,17 @@ class _HomePageState extends State<HomePage>
   void _addChoice() {
     final text = _input.text.trim();
     if (text.isEmpty) return;
-    setState(() => _choices = [..._choices, text]);
+    _setChoices([..._choices, text]);
     _input.clear();
     _inputFocus.requestFocus();
   }
 
   void _removeChoice(int index) {
-    setState(() => _choices = [..._choices]..removeAt(index));
+    _setChoices([..._choices]..removeAt(index));
   }
 
   void _clearChoices() {
-    setState(() => _choices = []);
+    _setChoices([]);
   }
 
   void _spinWheel() {
@@ -118,9 +231,12 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    if (_lists == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('HappySpin'),
+        title: _buildListMenu(),
         centerTitle: true,
         actions: [
           IconButton(
@@ -155,6 +271,79 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
+
+  Widget _buildListMenu() {
+    final lists = _lists!;
+    return PopupMenuButton<VoidCallback>(
+      key: const Key('listMenu'),
+      tooltip: 'Changer de liste',
+      enabled: !_spinning,
+      onSelected: (action) => action(),
+      itemBuilder: (context) => [
+        for (var i = 0; i < lists.lists.length; i++)
+          PopupMenuItem(
+            value: () => _selectList(i),
+            child: ListTile(
+              leading: Icon(
+                i == lists.current
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+              ),
+              title: Text(lists.lists[i].name),
+              subtitle: Text(_choiceCount(lists.lists[i].choices.length)),
+            ),
+          ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          key: const Key('newList'),
+          value: _createList,
+          child: const ListTile(
+            leading: Icon(Icons.playlist_add),
+            title: Text('Nouvelle liste'),
+          ),
+        ),
+        PopupMenuItem(
+          key: const Key('renameList'),
+          value: _renameList,
+          child: const ListTile(
+            leading: Icon(Icons.edit_outlined),
+            title: Text('Renommer la liste'),
+          ),
+        ),
+        PopupMenuItem(
+          key: const Key('deleteList'),
+          value: _deleteList,
+          enabled: lists.lists.length > 1,
+          child: const ListTile(
+            leading: Icon(Icons.delete_outline),
+            title: Text('Supprimer la liste'),
+          ),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                lists.selected.name,
+                key: const Key('listName'),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _choiceCount(int count) => switch (count) {
+    0 => 'Aucun choix',
+    1 => '1 choix',
+    _ => '$count choix',
+  };
 
   Widget _buildWheel() {
     final canSpin = !_spinning && _choices.length >= 2;
@@ -241,6 +430,65 @@ class _HomePageState extends State<HomePage>
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ListNameDialog extends StatefulWidget {
+  const _ListNameDialog({
+    required this.title,
+    required this.action,
+    required this.initial,
+  });
+
+  final String title;
+  final String action;
+  final String initial;
+
+  @override
+  State<_ListNameDialog> createState() => _ListNameDialogState();
+}
+
+class _ListNameDialogState extends State<_ListNameDialog> {
+  late final TextEditingController _name = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_name.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        key: const Key('listNameInput'),
+        controller: _name,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(
+          labelText: 'Nom de la liste',
+          hintText: 'Ex. : Sorties du week-end',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          key: const Key('confirmListName'),
+          onPressed: _submit,
+          child: Text(widget.action),
+        ),
+      ],
     );
   }
 }
