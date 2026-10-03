@@ -112,18 +112,31 @@ class WheelPalette {
       all.firstWhere((p) => p.id == id, orElse: () => festive);
 }
 
-/// The look the user picked: light or dark, and a wheel palette.
+/// The settings the user picked: light or dark, a wheel palette, and
+/// whether choices can be weighted.
 class AppTheme {
   const AppTheme({
     this.mode = ThemeMode.system,
     this.palette = WheelPalette.festive,
+    this.weightedChoices = false,
   });
 
   final ThemeMode mode;
   final WheelPalette palette;
 
-  AppTheme copyWith({ThemeMode? mode, WheelPalette? palette}) =>
-      AppTheme(mode: mode ?? this.mode, palette: palette ?? this.palette);
+  /// Whether each choice can be given a weight. When off, every choice
+  /// counts the same, but the weights already set are kept.
+  final bool weightedChoices;
+
+  AppTheme copyWith({
+    ThemeMode? mode,
+    WheelPalette? palette,
+    bool? weightedChoices,
+  }) => AppTheme(
+    mode: mode ?? this.mode,
+    palette: palette ?? this.palette,
+    weightedChoices: weightedChoices ?? this.weightedChoices,
+  );
 
   ThemeData data(Brightness brightness) => ThemeData(
     colorScheme: ColorScheme.fromSeed(
@@ -134,7 +147,11 @@ class AppTheme {
     extensions: [WheelTheme(palette)],
   );
 
-  String encode() => jsonEncode({'mode': mode.name, 'palette': palette.id});
+  String encode() => jsonEncode({
+    'mode': mode.name,
+    'palette': palette.id,
+    'weightedChoices': weightedChoices,
+  });
 
   factory AppTheme.decode(String source) {
     final json = jsonDecode(source) as Map<String, Object?>;
@@ -144,15 +161,19 @@ class AppTheme {
         orElse: () => ThemeMode.system,
       ),
       palette: WheelPalette.byId(json['palette'] as String?),
+      weightedChoices: json['weightedChoices'] == true,
     );
   }
 
   @override
   bool operator ==(Object other) =>
-      other is AppTheme && other.mode == mode && other.palette == palette;
+      other is AppTheme &&
+      other.mode == mode &&
+      other.palette == palette &&
+      other.weightedChoices == weightedChoices;
 
   @override
-  int get hashCode => Object.hash(mode, palette);
+  int get hashCode => Object.hash(mode, palette, weightedChoices);
 }
 
 /// Makes the wheel palette available from the [Theme].
@@ -248,7 +269,7 @@ class AppThemeController extends ChangeNotifier {
   }
 }
 
-/// Lets the user pick light or dark and a wheel palette.
+/// The settings: light or dark, a wheel palette, and weighted choices.
 class ThemeSheet extends StatelessWidget {
   const ThemeSheet({super.key, required this.controller});
 
@@ -277,7 +298,7 @@ class ThemeSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Thème', style: text.titleLarge),
+                Text('Réglages', style: text.titleLarge),
                 const SizedBox(height: 16),
                 Text('Apparence', style: text.titleSmall),
                 const SizedBox(height: 8),
@@ -314,6 +335,20 @@ class ThemeSheet extends StatelessWidget {
                     onTap: () =>
                         controller.update(theme.copyWith(palette: palette)),
                   ),
+                const SizedBox(height: 24),
+                Text('Choix', style: text.titleSmall),
+                SwitchListTile(
+                  key: const Key('weightedChoices'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Donner un poids aux choix'),
+                  subtitle: const Text(
+                    'Un choix plus lourd a une plus grande part de la roue '
+                    'et plus de chances de sortir.',
+                  ),
+                  value: theme.weightedChoices,
+                  onChanged: (on) =>
+                      controller.update(theme.copyWith(weightedChoices: on)),
+                ),
               ],
             ),
           ),

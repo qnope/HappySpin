@@ -49,7 +49,15 @@ class _HomePageState extends State<HomePage>
 
   List<String> get _choices => _lists!.selected.choices;
 
-  WheelLayout get _layout => WheelLayout(_lists!.selected.weights);
+  /// Whether the user turned weights on in the settings.
+  bool get _weighted => widget.themeController?.theme.weightedChoices ?? false;
+
+  /// Weights the wheel uses: all the same when weights are turned off, while
+  /// the ones saved with the list are kept for when they are turned back on.
+  List<int> get _weights =>
+      _weighted ? _lists!.selected.weights : List.filled(_choices.length, 1);
+
+  WheelLayout get _layout => WheelLayout(_weights);
 
   @override
   void initState() {
@@ -255,9 +263,9 @@ class _HomePageState extends State<HomePage>
           if (widget.themeController case final controller?)
             IconButton(
               key: const Key('themeButton'),
-              tooltip: 'Thème',
+              tooltip: 'Réglages',
               onPressed: () => ThemeSheet.show(context, controller),
-              icon: const Icon(Icons.palette_outlined),
+              icon: const Icon(Icons.settings_outlined),
             ),
           IconButton(
             tooltip: 'Tout effacer',
@@ -384,7 +392,7 @@ class _HomePageState extends State<HomePage>
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: SpinningWheel(
                       choices: _choices,
-                      weights: _lists!.selected.weights,
+                      weights: _weights,
                       rotation: _rotation,
                       pointerDeflection: _pointer,
                     ),
@@ -485,14 +493,16 @@ class _HomePageState extends State<HomePage>
                         ),
                       ),
                       title: Text(_choices[i]),
-                      subtitle: Text(
-                        _chanceLabel(_lists!.selected.chanceOf(i)),
-                        key: Key('chance$i'),
-                      ),
+                      subtitle: _weighted
+                          ? Text(
+                              _chanceLabel(_lists!.selected.chanceOf(i)),
+                              key: Key('chance$i'),
+                            )
+                          : null,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ..._buildWeightStepper(i),
+                          if (_weighted) ..._buildWeightStepper(i),
                           IconButton(
                             tooltip: 'Retirer',
                             onPressed: _spinning

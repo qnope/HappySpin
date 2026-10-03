@@ -11,6 +11,15 @@ void main() {
     expect(AppTheme.decode(theme.encode()), theme);
   });
 
+  test('weighted choices are off by default and saved when on', () {
+    expect(const AppTheme().weightedChoices, isFalse);
+    const theme = AppTheme(weightedChoices: true);
+    expect(AppTheme.decode(theme.encode()), theme);
+    // Settings saved before the option existed keep weights off.
+    final old = AppTheme.decode('{"mode":"dark","palette":"ocean"}');
+    expect(old.weightedChoices, isFalse);
+  });
+
   test('unknown saved values fall back to the defaults', () {
     final theme = AppTheme.decode('{"mode":"violet","palette":"inconnue"}');
     expect(theme, const AppTheme());

@@ -2,18 +2,28 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:happyspin/src/app_theme.dart';
 import 'package:happyspin/src/choice_lists.dart';
 import 'package:happyspin/src/home_page.dart';
+import 'package:happyspin/src/spinning_wheel.dart';
 
 void main() {
   Future<MemoryChoiceListStore> pump(
     WidgetTester tester, {
     MemoryChoiceListStore? store,
+    bool weighted = false,
   }) async {
     store ??= MemoryChoiceListStore();
+    final settings = AppThemeController(store: MemoryAppThemeStore())
+      ..update(AppTheme(weightedChoices: weighted));
+    addTearDown(settings.dispose);
     await tester.pumpWidget(
       MaterialApp(
-        home: HomePage(random: math.Random(1), store: store),
+        home: HomePage(
+          random: math.Random(1),
+          store: store,
+          themeController: settings,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -181,7 +191,7 @@ void main() {
   testWidgets('weights make a choice more likely and are saved', (
     tester,
   ) async {
-    final store = await pump(tester);
+    final store = await pump(tester, weighted: true);
     String text(String key) => tester.widget<Text>(find.byKey(Key(key))).data!;
     expect(text('weight0'), '×1');
     expect(text('chance0'), '25\u00a0%');
@@ -221,6 +231,7 @@ void main() {
   testWidgets('a heavy choice still spins to a result', (tester) async {
     await pump(
       tester,
+      weighted: true,
       store: MemoryChoiceListStore(
         ChoiceLists(
           lists: const [
@@ -238,5 +249,70 @@ void main() {
     await tester.pumpAndSettle();
     final result = tester.widget<Text>(find.byKey(const Key('result')));
     expect(['Pizza', 'Sushi'], contains(result.data));
+  });
+
+  testWidgets('weights are hidden and ignored until turned on', (tester) async {
+    await pump(
+      tester,
+      store: MemoryChoiceListStore(
+        ChoiceLists(
+          lists: const [
+            ChoiceList(
+              name: 'Repas',
+              choices: ['Pizza', 'Sushi'],
+              weights: [10, 1],
+            ),
+          ],
+          current: 0,
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('heavier0')), findsNothing);
+    expect(find.byKey(const Key('chance0')), findsNothing);
+    final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
+    expect(wheel.weights, [1, 1]);
+  });
+
+  testWidgets('turning weights on in the settings shows the saved ones', (
+    tester,
+  ) async {
+    final settings = AppThemeController(store: MemoryAppThemeStore());
+    addTearDown(settings.dispose);
+    await tester.pumpWidget(
+      ListenableBuilder(
+        listenable: settings,
+        builder: (context, _) => MaterialApp(
+          home: HomePage(
+            random: math.Random(1),
+            store: MemoryChoiceListStore(
+              ChoiceLists(
+                lists: const [
+                  ChoiceList(
+                    name: 'Repas',
+                    choices: ['Pizza', 'Sushi'],
+                    weights: [3, 1],
+                  ),
+                ],
+                current: 0,
+              ),
+            ),
+            themeController: settings,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('themeButton')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('weightedChoices')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('weightedChoices')));
+    await tester.pumpAndSettle();
+    expect(settings.theme.weightedChoices, isTrue);
+
+    final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
+    expect(wheel.weights, [3, 1]);
+    expect(tester.widget<Text>(find.byKey(const Key('weight0'))).data, '×3');
   });
 }
