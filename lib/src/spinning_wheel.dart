@@ -25,7 +25,7 @@ Color wheelColor(int index, int count) {
 }
 
 /// A wheel split into one segment per choice, rotated by [rotation] radians,
-/// with a peg on each segment boundary and a springy pointer at the top.
+/// with a peg in the middle of each segment and a springy pointer at the top.
 class SpinningWheel extends StatelessWidget {
   const SpinningWheel({
     super.key,
@@ -154,7 +154,7 @@ class _WheelPainter extends CustomPainter {
     if (choices.length > 1) _paintPegs(canvas, center, radius);
   }
 
-  /// One peg on each segment boundary, near the rim.
+  /// One peg in the middle of each segment, near the rim.
   void _paintPegs(Canvas canvas, Offset center, double radius) {
     final seg = segmentAngle(choices.length);
     final pegRadius = math.max(4.0, radius * 0.032);
@@ -165,7 +165,7 @@ class _WheelPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (var i = 0; i < choices.length; i++) {
-      final angle = -math.pi / 2 + i * seg;
+      final angle = -math.pi / 2 + (i + 0.5) * seg;
       final peg = center + Offset(math.cos(angle), math.sin(angle)) * distance;
       canvas.drawCircle(
         peg + const Offset(0, 1),
@@ -185,7 +185,7 @@ class _WheelPainter extends CustomPainter {
     double seg,
     String text,
   ) {
-    final maxWidth = radius * 0.62;
+    final maxWidth = radius * 0.56;
     final fontSize = math.min(18.0, math.max(10.0, radius * seg * 0.35));
     final painter = TextPainter(
       text: TextSpan(
@@ -207,7 +207,8 @@ class _WheelPainter extends CustomPainter {
     canvas.rotate(angle);
     painter.paint(
       canvas,
-      Offset(radius * 0.92 - painter.width, -painter.height / 2),
+      // Stop short of the peg at the rim.
+      Offset(radius * 0.84 - painter.width, -painter.height / 2),
     );
     canvas.restore();
   }
