@@ -72,17 +72,23 @@ class SpinningWheel extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              shape: BoxShape.circle,
-              boxShadow: const [
-                BoxShadow(blurRadius: 6, color: Colors.black26),
-              ],
+          // Same top padding as the wheel, so the hub sits on its center.
+          Padding(
+            padding: const EdgeInsets.only(top: 18),
+            child: Center(
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: scheme.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(blurRadius: 6, color: Colors.black26),
+                  ],
+                ),
+                child: Icon(Icons.auto_awesome, color: scheme.primary),
+              ),
             ),
-            child: Icon(Icons.auto_awesome, color: scheme.primary),
           ),
         ],
       ),
