@@ -1,9 +1,12 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'spinning_wheel.dart';
 import 'wheel_math.dart';
+import 'wheel_physics.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.random});
@@ -18,33 +21,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   late final math.Random _random = widget.random ?? math.Random();
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 4200),
-  );
+  late final Ticker _ticker = createTicker(_onTick);
   final TextEditingController _input = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
 
   List<String> _choices = ['Pizza', 'Sushi', 'Burger', 'Salade'];
-  double _rotation = 0;
-  Animation<double>? _spin;
+  // Start with the first choice under the pointer rather than a peg.
+  double _rotation = -segmentAngle(4) / 2;
+  double _pointer = 0;
+  WheelPhysics? _physics;
+  Duration _lastTick = Duration.zero;
 
-  bool get _spinning => _controller.isAnimating;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      setState(() => _rotation = _spin!.value);
-    });
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) _showResult();
-    });
-  }
+  bool get _spinning => _physics != null;
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ticker.dispose();
     _input.dispose();
     _inputFocus.dispose();
     super.dispose();
@@ -68,24 +60,41 @@ class _HomePageState extends State<HomePage>
 
   void _spinWheel() {
     if (_spinning || _choices.length < 2) return;
-    final target = _random.nextInt(_choices.length);
-    final end = targetRotation(
-      current: _rotation,
-      target: target,
-      count: _choices.length,
-      minTurns: 5 + _random.nextInt(3),
-      offset: (_random.nextDouble() - 0.5) * 0.8,
-    );
-    _spin = Tween<double>(
-      begin: _rotation,
-      end: end,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutQuart));
-    _controller.forward(from: 0);
-    setState(() {});
+    setState(() {
+      _physics = WheelPhysics(
+        pegCount: _choices.length,
+        angle: _rotation,
+        // Between one and one and a half turns per second.
+        velocity: 6 + _random.nextDouble() * 3,
+      );
+    });
+    _lastTick = Duration.zero;
+    _ticker.start();
   }
 
-  void _showResult() {
-    final winner = _choices[indexAtRotation(_rotation, _choices.length)];
+  void _onTick(Duration elapsed) {
+    final physics = _physics!;
+    final clicks = physics.clicks;
+    // Cap the step so that a dropped frame does not make the wheel jump.
+    final seconds = (elapsed - _lastTick).inMicroseconds / 1e6;
+    physics.advance(math.min(seconds, 0.1));
+    _lastTick = elapsed;
+    if (physics.clicks != clicks) HapticFeedback.selectionClick();
+
+    final done = physics.isAtRest;
+    setState(() {
+      _rotation = physics.angle;
+      _pointer = done ? 0 : physics.pointer;
+      if (done) _physics = null;
+    });
+    if (done) {
+      _ticker.stop();
+      _showResult(physics.selectedIndex);
+    }
+  }
+
+  void _showResult(int index) {
+    final winner = _choices[index];
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -159,7 +168,11 @@ class _HomePageState extends State<HomePage>
                 onTap: canSpin ? _spinWheel : null,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 520),
-                  child: SpinningWheel(choices: _choices, rotation: _rotation),
+                  child: SpinningWheel(
+                    choices: _choices,
+                    rotation: _rotation,
+                    pointerDeflection: _pointer,
+                  ),
                 ),
               ),
             ),
