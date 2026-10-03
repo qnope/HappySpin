@@ -41,7 +41,7 @@ jobs:
           "$CHROMEWEBDRIVER/chromedriver" --port=4444 &
           sleep 2
       - run: >
-          flutter drive --release
+          flutter drive
           --driver=test_driver/integration_test.dart
           --target=integration_test/app_test.dart
           -d web-server --browser-name=chrome --headless
