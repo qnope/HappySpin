@@ -2,16 +2,22 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 
 import 'app_theme.dart';
 import 'choice_lists.dart';
 import 'spinning_wheel.dart';
+import 'wheel_feedback.dart';
 import 'wheel_math.dart';
 import 'wheel_physics.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.random, this.store, this.themeController});
+  const HomePage({
+    super.key,
+    this.random,
+    this.store,
+    this.themeController,
+    this.feedback,
+  });
 
   /// Injectable for tests; defaults to a fresh [math.Random].
   final math.Random? random;
@@ -21,6 +27,9 @@ class HomePage extends StatefulWidget {
 
   /// Changes the app's theme; the theme button is hidden without it.
   final AppThemeController? themeController;
+
+  /// Sounds and vibrations of the wheel; defaults to the device's.
+  final WheelFeedback? feedback;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -46,6 +55,14 @@ class _HomePageState extends State<HomePage>
   final Set<int> _pressing = {};
 
   bool get _spinning => _physics != null;
+
+  late final WheelFeedback _deviceFeedback =
+      widget.feedback ?? DeviceWheelFeedback();
+
+  /// Sounds and vibrations, unless the user turned them off in the settings.
+  WheelFeedback get _feedback => widget.themeController?.theme.sounds ?? true
+      ? _deviceFeedback
+      : const SilentWheelFeedback();
 
   List<String> get _choices => _lists!.selected.choices;
 
@@ -201,6 +218,7 @@ class _HomePageState extends State<HomePage>
         velocity: 4.5 + _random.nextDouble() * 2,
       );
     });
+    _feedback.preload();
     _lastTick = Duration.zero;
     _ticker.start();
   }
@@ -213,7 +231,7 @@ class _HomePageState extends State<HomePage>
     final seconds = (elapsed - _lastTick).inMicroseconds / 1e6;
     physics.advance(math.min(seconds, 0.1));
     _lastTick = elapsed;
-    if (physics.clicks != clicks) HapticFeedback.selectionClick();
+    if (physics.clicks != clicks) _feedback.tick(physics.velocity);
 
     final done = physics.isAtRest;
     setState(() {
@@ -223,6 +241,7 @@ class _HomePageState extends State<HomePage>
     });
     if (done) {
       _ticker.stop();
+      _feedback.stop();
       _showResult(physics.selectedIndex);
     }
   }
