@@ -9,6 +9,10 @@ abstract class WheelSounds {
   /// Loads the sounds; until then, playing them does nothing.
   Future<void> load();
 
+  /// Lets sound play from now on, where the platform only allows it right
+  /// after the user touched the screen. Call it from a tap.
+  void unlock();
+
   /// The click of a peg going past the pointer, at [volume] from 0 to 1.
   void tick(double volume);
 

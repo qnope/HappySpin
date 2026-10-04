@@ -1,11 +1,11 @@
-import 'package:flutter/services.dart';
-
+import 'wheel_haptics.dart';
 import 'wheel_sounds.dart';
 
 /// What the wheel makes the user hear and feel: a tick each time a peg goes
 /// past the pointer, and a chime with a stronger buzz when it stops.
 abstract class WheelFeedback {
-  /// Gets the sounds ready, so that the first tick is not late.
+  /// Gets the sounds ready, so that the first tick is not late. Called from
+  /// the tap that spins the wheel, when browsers allow sound to start.
   void preload();
 
   /// A peg went past the pointer while the wheel turned at [speed] rad/s.
@@ -18,24 +18,30 @@ abstract class WheelFeedback {
 /// Plays the wheel's sounds and vibrates the device.
 class DeviceWheelFeedback implements WheelFeedback {
   final WheelSounds _sounds = WheelSounds();
+  final WheelHaptics _haptics = WheelHaptics();
   Future<void>? _loading;
 
   @override
-  void preload() => _loading ??= _sounds.load().catchError((Object _) {
+  void preload() {
+    _sounds.unlock();
+    _load();
+  }
+
+  void _load() => _loading ??= _sounds.load().catchError((Object _) {
     // Without sound, the wheel still vibrates.
   });
 
   @override
   void tick(double speed) {
-    HapticFeedback.selectionClick();
-    preload();
+    _haptics.tick();
+    _load();
     // Louder when the wheel turns fast, softer as it slows down.
     _sounds.tick((0.5 + speed.abs() / 8).clamp(0.5, 1.0));
   }
 
   @override
   void stop() {
-    HapticFeedback.mediumImpact();
+    _haptics.stop();
     _sounds.chime();
   }
 }
