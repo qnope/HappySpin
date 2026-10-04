@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 import 'app_theme.dart';
 import 'home_page.dart';
 
@@ -36,6 +38,10 @@ class _HappySpinAppState extends State<HappySpinApp> {
           theme: theme.data(Brightness.light),
           darkTheme: theme.data(Brightness.dark),
           themeMode: theme.mode,
+          locale: theme.language.locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          // English first: it is what a device in another language gets.
+          supportedLocales: const [Locale('en'), Locale('fr'), Locale('es')],
           home: HomePage(themeController: _theme),
         );
       },

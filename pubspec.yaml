@@ -37,6 +37,9 @@ dependencies:
   shared_preferences: ^2.5.3
   audioplayers: ^6.8.1
   web: ^1.1.1
+  flutter_localizations:
+    sdk: flutter
+  intl: any
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +64,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  generate: true
 
   assets:
     - assets/sounds/

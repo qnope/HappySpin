@@ -120,14 +120,13 @@ class ChoiceLists {
     : assert(lists.isNotEmpty),
       current = current.clamp(0, lists.length - 1);
 
-  /// What a first launch shows.
-  factory ChoiceLists.initial() => ChoiceLists(
-    lists: const [
-      ChoiceList(
-        name: 'Repas',
-        choices: ['Pizza', 'Sushi', 'Burger', 'Salade'],
-      ),
-    ],
+  /// What a first launch shows: one example list, given in the user's
+  /// language.
+  factory ChoiceLists.initial({
+    String name = 'Repas',
+    List<String> choices = const ['Pizza', 'Sushi', 'Burger', 'Salade'],
+  }) => ChoiceLists(
+    lists: [ChoiceList(name: name, choices: choices)],
     current: 0,
   );
 

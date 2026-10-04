@@ -52,7 +52,7 @@ void main() {
           expect(
             palette.segmentColor(i, count),
             isNot(palette.segmentColor((i + 1) % count, count)),
-            reason: '${palette.name}, $count segments, segment $i',
+            reason: '${palette.id}, $count segments, segment $i',
           );
         }
       }
@@ -77,6 +77,8 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
+    tester.platformDispatcher.localesTestValue = const [Locale('fr', 'FR')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     final store = MemoryAppThemeStore();
     await tester.pumpWidget(HappySpinApp(themeStore: store));
     await tester.pumpAndSettle();

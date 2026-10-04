@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../l10n/app_localizations.dart';
 import 'app_theme.dart';
 import 'choice_lists.dart';
 import 'spinning_wheel.dart';
@@ -108,7 +109,16 @@ class _HomePageState extends State<HomePage>
       // Start from the default list if storage is unavailable.
     }
     if (!mounted) return;
-    setState(() => _lists = saved ?? ChoiceLists.initial());
+    // A first launch starts with an example list in the user's language.
+    final l10n = AppLocalizations.of(context);
+    setState(
+      () => _lists =
+          saved ??
+          ChoiceLists.initial(
+            name: l10n.defaultListName,
+            choices: l10n.defaultChoices.split('|'),
+          ),
+    );
     _resetRotation();
   }
 
@@ -146,7 +156,8 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _createList() async {
-    final name = await _askListName(title: 'Nouvelle liste', action: 'Créer');
+    final l10n = AppLocalizations.of(context);
+    final name = await _askListName(title: l10n.newList, action: l10n.create);
     if (name == null) return;
     _updateLists([
       ..._lists!.lists,
@@ -157,9 +168,10 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _renameList() async {
+    final l10n = AppLocalizations.of(context);
     final name = await _askListName(
-      title: 'Renommer la liste',
-      action: 'Renommer',
+      title: l10n.renameList,
+      action: l10n.rename,
       initial: _lists!.selected.name,
     );
     if (name == null) return;
@@ -171,23 +183,24 @@ class _HomePageState extends State<HomePage>
   Future<void> _deleteList() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer la liste ?'),
-        content: Text(
-          '« ${_lists!.selected.name} » et ses choix seront perdus.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            key: const Key('confirmDeleteList'),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.deleteListQuestion),
+          content: Text(l10n.deleteListWarning(_lists!.selected.name)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              key: const Key('confirmDeleteList'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.delete),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true) return;
     final current = _lists!.current;
@@ -307,9 +320,10 @@ class _HomePageState extends State<HomePage>
       context: context,
       builder: (context) {
         final text = Theme.of(context).textTheme;
+        final l10n = AppLocalizations.of(context);
         return AlertDialog(
           icon: const Icon(Icons.celebration, size: 40),
-          title: const Text('Le sort a choisi'),
+          title: Text(l10n.resultTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -322,9 +336,7 @@ class _HomePageState extends State<HomePage>
               if (eliminating) ...[
                 const SizedBox(height: 12),
                 Text(
-                  confirm
-                      ? 'Le sortir de la roue pour les prochains tirages ?'
-                      : 'Il sort de la roue pour les prochains tirages.',
+                  confirm ? l10n.eliminationAsk : l10n.eliminationNote,
                   key: const Key('eliminationNote'),
                   textAlign: TextAlign.center,
                   style: text.bodyMedium,
@@ -337,17 +349,17 @@ class _HomePageState extends State<HomePage>
               TextButton(
                 key: const Key('keepChoice'),
                 onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Le garder'),
+                child: Text(l10n.keepChoice),
               ),
               FilledButton(
                 key: const Key('eliminateChoice'),
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Le sortir'),
+                child: Text(l10n.eliminateChoice),
               ),
             ] else
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Super !'),
+                child: Text(l10n.great),
               ),
           ],
         );
@@ -363,6 +375,7 @@ class _HomePageState extends State<HomePage>
     if (_lists == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: _buildListMenu(),
@@ -371,12 +384,12 @@ class _HomePageState extends State<HomePage>
           if (widget.themeController case final controller?)
             IconButton(
               key: const Key('themeButton'),
-              tooltip: 'Réglages',
+              tooltip: l10n.settings,
               onPressed: () => ThemeSheet.show(context, controller),
               icon: const Icon(Icons.settings_outlined),
             ),
           IconButton(
-            tooltip: 'Tout effacer',
+            tooltip: l10n.clearAll,
             onPressed: _choices.isEmpty || _spinning ? null : _clearChoices,
             icon: const Icon(Icons.delete_sweep_outlined),
           ),
@@ -410,9 +423,10 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildListMenu() {
     final lists = _lists!;
+    final l10n = AppLocalizations.of(context);
     return PopupMenuButton<VoidCallback>(
       key: const Key('listMenu'),
-      tooltip: 'Changer de liste',
+      tooltip: l10n.switchList,
       enabled: !_spinning,
       onSelected: (action) => action(),
       itemBuilder: (context) => [
@@ -426,33 +440,33 @@ class _HomePageState extends State<HomePage>
                     : Icons.radio_button_unchecked,
               ),
               title: Text(lists.lists[i].name),
-              subtitle: Text(_choiceCount(lists.lists[i].choices.length)),
+              subtitle: Text(l10n.choiceCount(lists.lists[i].choices.length)),
             ),
           ),
         const PopupMenuDivider(),
         PopupMenuItem(
           key: const Key('newList'),
           value: _createList,
-          child: const ListTile(
-            leading: Icon(Icons.playlist_add),
-            title: Text('Nouvelle liste'),
+          child: ListTile(
+            leading: const Icon(Icons.playlist_add),
+            title: Text(l10n.newList),
           ),
         ),
         PopupMenuItem(
           key: const Key('renameList'),
           value: _renameList,
-          child: const ListTile(
-            leading: Icon(Icons.edit_outlined),
-            title: Text('Renommer la liste'),
+          child: ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: Text(l10n.renameList),
           ),
         ),
         PopupMenuItem(
           key: const Key('deleteList'),
           value: _deleteList,
           enabled: lists.lists.length > 1,
-          child: const ListTile(
-            leading: Icon(Icons.delete_outline),
-            title: Text('Supprimer la liste'),
+          child: ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(l10n.deleteList),
           ),
         ),
       ],
@@ -475,14 +489,9 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  static String _choiceCount(int count) => switch (count) {
-    0 => 'Aucun choix',
-    1 => '1 choix',
-    _ => '$count choix',
-  };
-
   Widget _buildWheel() {
     final palette = WheelTheme.of(context);
+    final l10n = AppLocalizations.of(context);
     final onWheel = _onWheel;
     final canSpin = !_spinning && onWheel.length >= 2;
     // In elimination mode, once too few choices are left to spin, the wheel
@@ -526,8 +535,8 @@ class _HomePageState extends State<HomePage>
           if (exhausted) ...[
             Text(
               onWheel.isEmpty
-                  ? 'Tous les choix sont sortis.'
-                  : 'Il ne reste que « ${_choices[onWheel.single]} » !',
+                  ? l10n.allChoicesOut
+                  : l10n.onlyChoiceLeft(_choices[onWheel.single]),
               key: const Key('lastChoice'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,
@@ -537,7 +546,7 @@ class _HomePageState extends State<HomePage>
               key: const Key('restoreAllWheel'),
               onPressed: _restoreAll,
               icon: const Icon(Icons.restart_alt),
-              label: const Text('Tout remettre dans la roue'),
+              label: Text(l10n.restoreAllWheel),
               style: FilledButton.styleFrom(
                 minimumSize: const Size(220, 52),
                 textStyle: const TextStyle(fontSize: 18),
@@ -548,11 +557,7 @@ class _HomePageState extends State<HomePage>
               key: const Key('spin'),
               onPressed: canSpin ? _spinWheel : null,
               icon: const Icon(Icons.refresh),
-              label: Text(
-                onWheel.length < 2
-                    ? 'Ajoute au moins 2 choix'
-                    : 'Faire tourner',
-              ),
+              label: Text(onWheel.length < 2 ? l10n.addAtLeastTwo : l10n.spin),
               style: FilledButton.styleFrom(
                 minimumSize: const Size(220, 52),
                 textStyle: const TextStyle(fontSize: 18),
@@ -566,10 +571,11 @@ class _HomePageState extends State<HomePage>
   /// Buttons making the choice at [index] more or less likely.
   List<Widget> _buildWeightStepper(int index) {
     final weight = _lists!.selected.weightOf(index);
+    final l10n = AppLocalizations.of(context);
     return [
       IconButton(
         key: Key('lighter$index'),
-        tooltip: 'Moins de chances',
+        tooltip: l10n.lessLikely,
         visualDensity: VisualDensity.compact,
         onPressed: _spinning || weight <= ChoiceList.minWeight
             ? null
@@ -587,7 +593,7 @@ class _HomePageState extends State<HomePage>
       ),
       IconButton(
         key: Key('heavier$index'),
-        tooltip: 'Plus de chances',
+        tooltip: l10n.moreLikely,
         visualDensity: VisualDensity.compact,
         onPressed: _spinning || weight >= ChoiceList.maxWeight
             ? null
@@ -600,6 +606,7 @@ class _HomePageState extends State<HomePage>
   Widget _buildEditor() {
     final palette = WheelTheme.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     final onWheel = _onWheel;
     final out = _eliminating ? _lists!.selected.eliminated.length : 0;
     return Padding(
@@ -614,11 +621,11 @@ class _HomePageState extends State<HomePage>
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _addChoice(),
             decoration: InputDecoration(
-              labelText: 'Nouveau choix',
+              labelText: l10n.newChoice,
               border: const OutlineInputBorder(),
               suffixIcon: IconButton(
                 key: const Key('addChoice'),
-                tooltip: 'Ajouter',
+                tooltip: l10n.add,
                 onPressed: _spinning ? null : _addChoice,
                 icon: const Icon(Icons.add_circle),
               ),
@@ -630,7 +637,7 @@ class _HomePageState extends State<HomePage>
               children: [
                 Expanded(
                   child: Text(
-                    out == 1 ? '1 choix sorti' : '$out choix sortis',
+                    l10n.eliminatedCount(out),
                     key: const Key('eliminatedCount'),
                   ),
                 ),
@@ -638,13 +645,13 @@ class _HomePageState extends State<HomePage>
                   key: const Key('restoreAll'),
                   onPressed: _spinning ? null : _restoreAll,
                   icon: const Icon(Icons.restart_alt),
-                  label: const Text('Tout remettre'),
+                  label: Text(l10n.restoreAll),
                 ),
               ],
             ),
           Expanded(
             child: _choices.isEmpty
-                ? const Center(child: Text('Aucun choix pour le moment.'))
+                ? Center(child: Text(l10n.noChoicesYet))
                 : ListView.builder(
                     itemCount: _choices.length,
                     itemBuilder: (context, i) {
@@ -670,13 +677,14 @@ class _HomePageState extends State<HomePage>
                         ),
                         subtitle: eliminated
                             ? Text(
-                                'Sorti de la roue',
+                                l10n.eliminated,
                                 key: Key('eliminated$i'),
                                 style: TextStyle(color: scheme.outline),
                               )
                             : _weighted
                             ? Text(
                                 _chanceLabel(
+                                  l10n,
                                   _lists!.selected.chanceOf(i, among: onWheel),
                                 ),
                                 key: Key('chance$i'),
@@ -688,14 +696,14 @@ class _HomePageState extends State<HomePage>
                             if (eliminated)
                               IconButton(
                                 key: Key('restore$i'),
-                                tooltip: 'Remettre dans la roue',
+                                tooltip: l10n.restore,
                                 onPressed: _spinning ? null : () => _restore(i),
                                 icon: const Icon(Icons.undo),
                               )
                             else if (_weighted)
                               ..._buildWeightStepper(i),
                             IconButton(
-                              tooltip: 'Retirer',
+                              tooltip: l10n.remove,
                               onPressed: _spinning
                                   ? null
                                   : () => _removeChoice(i),
@@ -713,11 +721,12 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-/// "25 %", in the French style, for a [chance] between 0 and 1.
-String _chanceLabel(double chance) {
+/// "25 %", in the style of the user's language, for a [chance] between 0
+/// and 1.
+String _chanceLabel(AppLocalizations l10n, double chance) {
   final percent = chance * 100;
-  if (percent > 0 && percent < 1) return '< 1\u00a0%';
-  return '${percent.round()}\u00a0%';
+  if (percent > 0 && percent < 1) return '< ${l10n.percent('1')}';
+  return l10n.percent('${percent.round()}');
 }
 
 class _ListNameDialog extends StatefulWidget {
@@ -750,6 +759,7 @@ class _ListNameDialogState extends State<_ListNameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(widget.title),
       content: TextField(
@@ -759,15 +769,15 @@ class _ListNameDialogState extends State<_ListNameDialog> {
         textCapitalization: TextCapitalization.sentences,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: 'Nom de la liste',
-          hintText: 'Ex. : Sorties du week-end',
+        decoration: InputDecoration(
+          labelText: l10n.listName,
+          hintText: l10n.listNameHint,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Annuler'),
+          child: Text(l10n.cancel),
         ),
         FilledButton(
           key: const Key('confirmListName'),
