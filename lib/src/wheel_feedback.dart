@@ -17,7 +17,11 @@ abstract class WheelFeedback {
 
 /// Plays the wheel's sounds and vibrates the device.
 class DeviceWheelFeedback implements WheelFeedback {
-  final WheelSounds _sounds = WheelSounds();
+  /// [enabled] tells whether the user wants sounds and vibrations.
+  DeviceWheelFeedback({required bool Function() enabled})
+    : _sounds = WheelSounds(enabled: enabled);
+
+  final WheelSounds _sounds;
   final WheelHaptics _haptics = WheelHaptics();
   Future<void>? _loading;
 
