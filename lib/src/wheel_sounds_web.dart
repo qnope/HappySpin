@@ -32,7 +32,7 @@ class PlatformWheelSounds implements WheelSounds {
 
   @override
   void unlock() {
-    _playLikeMedia();
+    _mixWithMusic();
     try {
       final context = _audio;
       if (context.state == 'running') return;
@@ -47,15 +47,15 @@ class PlatformWheelSounds implements WheelSounds {
     }
   }
 
-  /// On iPhone, Web Audio is mixed in like a game's background sound and can
-  /// stay inaudible where a video would be heard. Asking for the "playback"
-  /// audio session (iOS 17 and later) makes the wheel's sounds play like
-  /// media. As with a video, other apps' music pauses while they play.
-  void _playLikeMedia() {
+  /// The user's music must keep playing while the wheel spins, so the
+  /// audio session (iOS 17 and later) is "ambient": the wheel's sounds mix
+  /// with the music instead of pausing it. The "playback" session is heard
+  /// even where an iPhone mutes ambient sounds, but it pauses the music.
+  void _mixWithMusic() {
     try {
       final navigator = web.window.navigator as JSObject;
       if (navigator.has('audioSession')) {
-        (navigator['audioSession'] as JSObject)['type'] = 'playback'.toJS;
+        (navigator['audioSession'] as JSObject)['type'] = 'ambient'.toJS;
       }
     } on Object {
       // Older browsers have no audio session to choose.
