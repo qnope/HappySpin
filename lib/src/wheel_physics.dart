@@ -76,6 +76,18 @@ class WheelPhysics {
   /// Number of pegs that went past the pointer so far.
   int clicks = 0;
 
+  /// Number of times a peg hit the pointer hard enough to bend it, but was
+  /// too slow to get past it and started falling back.
+  int knocks = 0;
+
+  /// How far a peg must bend the pointer for its knock to be heard.
+  static const double knockBend = 0.3;
+
+  // Furthest the touching peg has bent the pointer so far, and whether it
+  // has knocked already.
+  double _bend = 0;
+  bool _knocked = false;
+
   // 1: a peg pushes the pointer from the left (wheel turning clockwise),
   // -1: from the right, 0: no peg touching it.
   int _contact = 0;
@@ -182,6 +194,15 @@ class WheelPhysics {
       pointer = forced;
       pointerVelocity = velocity / contactWidth;
     }
+    if (_contact != 0) {
+      _bend = math.max(_bend, pointer.abs());
+      // The wheel stopped going forward against the peg: it knocked
+      // against the pointer and falls back.
+      if (!_knocked && _bend >= knockBend && velocity * _contact <= 0) {
+        _knocked = true;
+        knocks++;
+      }
+    }
   }
 
   void _updateContact() {
@@ -189,12 +210,16 @@ class WheelPhysics {
     if (d.abs() >= contactWidth) {
       _contact = 0;
       _released = 0;
+      _bend = 0;
+      _knocked = false;
     } else if (_contact > 0 && d >= 0 || _contact < 0 && d <= 0) {
       // The peg slipped past the pointer, which snaps back.
       _released = _contact;
       _contact = 0;
       pointerVelocity = 0;
       clicks++;
+      _bend = 0;
+      _knocked = false;
     } else if (_contact == 0 && _released == 0) {
       _contact = d < 0 ? 1 : -1;
     }

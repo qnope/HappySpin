@@ -48,6 +48,25 @@ void main() {
     expect(wheel.clicks, crossed);
   });
 
+  test('a peg too slow to get past the pointer knocks against it', () {
+    final layout = WheelLayout.even(4);
+    final wheel = WheelPhysics(layout: layout, angle: 0, velocity: 0.8);
+    // Start just before the first peg reaches the pointer.
+    wheel.angle = -layout.middle(0) - wheel.contactWidth - 0.005;
+    spin(wheel);
+    expect(wheel.clicks, 0);
+    expect(wheel.knocks, 1);
+  });
+
+  test('a peg barely touching the pointer makes no knock', () {
+    final layout = WheelLayout.even(4);
+    final wheel = WheelPhysics(layout: layout, angle: 0, velocity: 0.15);
+    wheel.angle = -layout.middle(0) - wheel.contactWidth - 0.001;
+    spin(wheel);
+    expect(wheel.clicks, 0);
+    expect(wheel.knocks, 0);
+  });
+
   test('the wheel slows down on each peg', () {
     final wheel = WheelPhysics(
       layout: WheelLayout.even(4),
