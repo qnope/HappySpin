@@ -13,6 +13,7 @@ class SpinningWheel extends StatelessWidget {
     required this.choices,
     required this.rotation,
     this.weights,
+    this.colors,
     this.pointerDeflection = 0,
   });
 
@@ -21,6 +22,9 @@ class SpinningWheel extends StatelessWidget {
   /// How wide each choice's segment is, relative to the others; all the
   /// same size when null.
   final List<int>? weights;
+
+  /// Color of each choice's segment; taken from the palette when null.
+  final List<Color>? colors;
   final double rotation;
 
   /// How much the pegs bend the pointer, from -1 (left) to 1 (right).
@@ -46,6 +50,7 @@ class SpinningWheel extends StatelessWidget {
                 size: Size.infinite,
                 painter: _WheelPainter(
                   choices: choices,
+                  colors: colors,
                   layout: choices.isEmpty
                       ? null
                       : WheelLayout(weights ?? List.filled(choices.length, 1)),
@@ -99,6 +104,7 @@ class SpinningWheel extends StatelessWidget {
 class _WheelPainter extends CustomPainter {
   _WheelPainter({
     required this.choices,
+    required this.colors,
     required this.layout,
     required this.palette,
     required this.rimColor,
@@ -106,6 +112,7 @@ class _WheelPainter extends CustomPainter {
   });
 
   final List<String> choices;
+  final List<Color>? colors;
   final WheelLayout? layout;
   final WheelPalette palette;
   final Color rimColor;
@@ -129,7 +136,8 @@ class _WheelPainter extends CustomPainter {
           start,
           seg,
           true,
-          Paint()..color = palette.segmentColor(i, choices.length),
+          Paint()
+            ..color = colors?[i] ?? palette.segmentColor(i, choices.length),
         );
         if (choices.length > 1) {
           canvas.drawArc(
@@ -229,6 +237,7 @@ class _WheelPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WheelPainter old) =>
       old.choices != choices ||
+      old.colors != colors ||
       old.layout != layout ||
       old.palette != palette ||
       old.rimColor != rimColor ||

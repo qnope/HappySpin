@@ -477,6 +477,7 @@ class _HomePageState extends State<HomePage>
   };
 
   Widget _buildWheel() {
+    final palette = WheelTheme.of(context);
     final onWheel = _onWheel;
     final canSpin = !_spinning && onWheel.length >= 2;
     // In elimination mode, once too few choices are left to spin, the wheel
@@ -502,6 +503,11 @@ class _HomePageState extends State<HomePage>
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: SpinningWheel(
                       choices: _wheelChoices,
+                      // Choices keep their color when others come out.
+                      colors: [
+                        for (final i in onWheel)
+                          palette.segmentColor(i, _choices.length),
+                      ],
                       weights: _weights,
                       rotation: _rotation,
                       pointerDeflection: _pointer,
@@ -646,10 +652,7 @@ class _HomePageState extends State<HomePage>
                           // Same color as the choice's segment on the wheel.
                           backgroundColor: eliminated
                               ? scheme.outlineVariant
-                              : palette.segmentColor(
-                                  onWheel.indexOf(i),
-                                  onWheel.length,
-                                ),
+                              : palette.segmentColor(i, _choices.length),
                         ),
                         title: Text(
                           _choices[i],
