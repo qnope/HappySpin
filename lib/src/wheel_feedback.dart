@@ -1,6 +1,6 @@
-import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import 'wheel_sounds.dart';
 
 /// What the wheel makes the user hear and feel: a tick each time a peg goes
 /// past the pointer, and a chime with a stronger buzz when it stops.
@@ -17,68 +17,26 @@ abstract class WheelFeedback {
 
 /// Plays the wheel's sounds and vibrates the device.
 class DeviceWheelFeedback implements WheelFeedback {
-  /// Ticks can overlap when the wheel spins fast, so several players take
-  /// turns playing them.
-  static const _tickPlayers = 6;
-
-  Future<AudioPool?>? _ticks;
-  AudioPlayer? _chime;
-
-  Future<AudioPool?> _loadTicks() async {
-    try {
-      // Mix with the user's music rather than pausing it, and stay quiet
-      // when an iPhone is switched to silent.
-      await AudioPlayer.global.setAudioContext(
-        AudioContextConfig(
-          focus: AudioContextConfigFocus.mixWithOthers,
-          respectSilence: defaultTargetPlatform == TargetPlatform.iOS,
-        ).build(),
-      );
-    } on Object {
-      // Not every platform lets the audio context be changed.
-    }
-    try {
-      return await AudioPool.create(
-        source: AssetSource('sounds/tick.wav'),
-        maxPlayers: _tickPlayers,
-        minPlayers: 2,
-      );
-    } on Object {
-      // Without sound, the wheel still vibrates.
-      return null;
-    }
-  }
+  final WheelSounds _sounds = WheelSounds();
+  Future<void>? _loading;
 
   @override
-  void preload() => _ticks ??= _loadTicks();
+  void preload() => _loading ??= _sounds.load().catchError((Object _) {
+    // Without sound, the wheel still vibrates.
+  });
 
   @override
   void tick(double speed) {
     HapticFeedback.selectionClick();
+    preload();
     // Louder when the wheel turns fast, softer as it slows down.
-    _playTick((0.35 + speed.abs() / 8).clamp(0.35, 1.0));
-  }
-
-  Future<void> _playTick(double volume) async {
-    try {
-      await (await (_ticks ??= _loadTicks()))?.start(volume: volume);
-    } on Object {
-      // A missed tick is not worth interrupting the spin for.
-    }
+    _sounds.tick((0.35 + speed.abs() / 8).clamp(0.35, 1.0));
   }
 
   @override
   void stop() {
     HapticFeedback.mediumImpact();
-    _playChime();
-  }
-
-  Future<void> _playChime() async {
-    try {
-      await (_chime ??= AudioPlayer()).play(AssetSource('sounds/stop.wav'));
-    } on Object {
-      // The result still shows without the chime.
-    }
+    _sounds.chime();
   }
 }
 
