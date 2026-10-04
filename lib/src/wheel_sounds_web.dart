@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 
@@ -12,8 +11,8 @@ import 'wheel_sounds.dart';
 class PlatformWheelSounds implements WheelSounds {
   PlatformWheelSounds({required this._enabled}) {
     // Safari only lets a page start its sounds while it handles a touch or
-    // a click, so the first one gets the audio ready, before the app even
-    // hears about it.
+    // a click, so every one of them gets a chance to unlock the sounds,
+    // before the app even hears about it.
     for (final type in ['touchend', 'pointerup', 'click', 'keydown']) {
       web.document.addEventListener(type, _onUserGesture, true.toJS);
     }
@@ -22,29 +21,22 @@ class PlatformWheelSounds implements WheelSounds {
   final bool Function() _enabled;
 
   late final JSFunction _onUserGesture = ((web.Event _) {
-    if (_enabled() && _context == null) _start(_audio);
+    if (_enabled()) unlock();
   }).toJS;
 
   web.AudioContext? _context;
   web.AudioBuffer? _tick;
   web.AudioBuffer? _chime;
 
-  /// Gives the audio back to the user's music once the wheel has stopped.
-  Timer? _release;
-
   web.AudioContext get _audio => _context ??= web.AudioContext();
 
-  /// Called from the tap that spins the wheel.
   @override
   void unlock() {
-    _release?.cancel();
-    _setSessionType('playback');
-    _start(_audio);
-  }
-
-  void _start(web.AudioContext context) {
+    _mixWithMusic();
     try {
-      if (context.state != 'running') context.resume();
+      final context = _audio;
+      if (context.state == 'running') return;
+      context.resume();
       // Safari also wants a sound to start during the touch: a silent one.
       final source = context.createBufferSource()
         ..buffer = context.createBuffer(1, 1, 22050);
@@ -55,34 +47,19 @@ class PlatformWheelSounds implements WheelSounds {
     }
   }
 
-  /// On iPhone, Web Audio is mixed in like a game's background sound and can
-  /// stay inaudible where a video would be heard. The "playback" audio
-  /// session (iOS 17 and later) makes the wheel's sounds play like media,
-  /// but like a video it pauses the user's music, so the wheel only holds it
-  /// while it spins and goes back to "auto" once it has stopped.
-  void _setSessionType(String type) {
+  /// The user's music must keep playing while the wheel spins, so the
+  /// audio session (iOS 17 and later) is "ambient": the wheel's sounds mix
+  /// with the music instead of pausing it. The "playback" session is heard
+  /// even where an iPhone mutes ambient sounds, but it pauses the music.
+  void _mixWithMusic() {
     try {
       final navigator = web.window.navigator as JSObject;
       if (navigator.has('audioSession')) {
-        (navigator['audioSession'] as JSObject)['type'] = type.toJS;
+        (navigator['audioSession'] as JSObject)['type'] = 'ambient'.toJS;
       }
     } on Object {
       // Older browsers have no audio session to choose.
     }
-  }
-
-  /// Once the chime has rung out, stops the audio so that the music the
-  /// spin paused can play again.
-  void _releaseAfter(Duration delay) {
-    _release?.cancel();
-    _release = Timer(delay, () {
-      try {
-        _context?.suspend();
-      } on Object {
-        // The audio stays on; the music just does not come back by itself.
-      }
-      _setSessionType('auto');
-    });
   }
 
   @override
@@ -108,16 +85,13 @@ class PlatformWheelSounds implements WheelSounds {
   void tick(double volume) => _play(_tick, volume);
 
   @override
-  void chime() {
-    _play(_chime, 1);
-    final seconds = _chime?.duration ?? 0;
-    _releaseAfter(Duration(milliseconds: (seconds * 1000).round() + 300));
-  }
+  void chime() => _play(_chime, 1);
 
   void _play(web.AudioBuffer? buffer, double volume) {
     final context = _context;
     if (context == null || buffer == null) return;
     try {
+      if (context.state == 'suspended') context.resume();
       final source = context.createBufferSource()..buffer = buffer;
       final gain = context.createGain()..gain.value = volume;
       source.connect(gain);
