@@ -29,11 +29,20 @@ void main() {
     MemoryChoiceListStore? store,
     bool weighted = false,
     bool sounds = true,
+    bool elimination = false,
+    bool confirmElimination = false,
     WheelFeedback? feedback,
   }) async {
     store ??= MemoryChoiceListStore();
     final settings = AppThemeController(store: MemoryAppThemeStore())
-      ..update(AppTheme(weightedChoices: weighted, sounds: sounds));
+      ..update(
+        AppTheme(
+          weightedChoices: weighted,
+          sounds: sounds,
+          elimination: elimination,
+          confirmElimination: confirmElimination,
+        ),
+      );
     addTearDown(settings.dispose);
     await tester.pumpWidget(
       MaterialApp(
@@ -396,5 +405,176 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('result')), findsOneWidget);
     expect(feedback.ticks, isEmpty);
+  });
+
+  group('elimination mode', () {
+    MemoryChoiceListStore storeWith(
+      List<String> choices, {
+      Set<int> eliminated = const {},
+    }) => MemoryChoiceListStore(
+      ChoiceLists(
+        lists: [
+          ChoiceList(name: 'Repas', choices: choices, eliminated: eliminated),
+        ],
+        current: 0,
+      ),
+    );
+
+    List<String> wheelChoices(WidgetTester tester) =>
+        tester.widget<SpinningWheel>(find.byType(SpinningWheel)).choices;
+
+    Future<String> spin(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('spin')));
+      await tester.pumpAndSettle();
+      return tester.widget<Text>(find.byKey(const Key('result'))).data!;
+    }
+
+    testWidgets('picked choices come out until one is left, then go back', (
+      tester,
+    ) async {
+      final store = await pump(
+        tester,
+        elimination: true,
+        store: storeWith(['Pizza', 'Sushi', 'Burger']),
+      );
+
+      final first = await spin(tester);
+      expect(find.byKey(const Key('eliminationNote')), findsOneWidget);
+      await tester.tap(find.text('Super !'));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), isNot(contains(first)));
+      expect(wheelChoices(tester), hasLength(2));
+      expect(find.text('1 choix sorti'), findsOneWidget);
+      // Still in the list, marked as out.
+      expect(find.widgetWithText(ListTile, first), findsOneWidget);
+      expect(find.text('Sorti de la roue'), findsOneWidget);
+      expect(store.saved!.selected.eliminated, hasLength(1));
+
+      final second = await spin(tester);
+      expect(second, isNot(first));
+      await tester.tap(find.text('Super !'));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), hasLength(1));
+      expect(find.text('2 choix sortis'), findsOneWidget);
+
+      // One choice left: no more spinning, the app says which one it is.
+      final last = wheelChoices(tester).single;
+      expect(find.byKey(const Key('spin')), findsNothing);
+      expect(find.text('Il ne reste que « $last » !'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('wheel')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('result')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('restoreAllWheel')));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
+      expect(find.byKey(const Key('spin')), findsOneWidget);
+      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(store.saved!.selected.eliminated, isEmpty);
+    });
+
+    testWidgets('asks before taking the choice out when set to', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        elimination: true,
+        confirmElimination: true,
+        store: storeWith(['Pizza', 'Sushi', 'Burger']),
+      );
+
+      await spin(tester);
+      expect(find.text('Super !'), findsNothing);
+      await tester.tap(find.byKey(const Key('keepChoice')));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), hasLength(3));
+
+      final picked = await spin(tester);
+      await tester.tap(find.byKey(const Key('eliminateChoice')));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), hasLength(2));
+      expect(wheelChoices(tester), isNot(contains(picked)));
+    });
+
+    testWidgets('a choice can be put back on its own', (tester) async {
+      await pump(
+        tester,
+        elimination: true,
+        store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0, 2}),
+      );
+      expect(wheelChoices(tester), ['Sushi']);
+      expect(find.text('Il ne reste que « Sushi » !'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('restore2')));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), ['Sushi', 'Burger']);
+      expect(find.byKey(const Key('spin')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('restoreAll')));
+      await tester.pumpAndSettle();
+      expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
+      expect(find.byKey(const Key('restoreAll')), findsNothing);
+    });
+
+    testWidgets('chances only count the choices left on the wheel', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        elimination: true,
+        weighted: true,
+        store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0}),
+      );
+      expect(find.byKey(const Key('chance0')), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('chance1'))).data,
+        '50 %',
+      );
+    });
+
+    testWidgets('choices that came out are back on the wheel when off', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0}),
+      );
+      expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
+      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(find.byKey(const Key('restoreAll')), findsNothing);
+      await spin(tester);
+      expect(find.byKey(const Key('eliminationNote')), findsNothing);
+    });
+
+    testWidgets('is turned on in the settings, with its confirmation', (
+      tester,
+    ) async {
+      final settings = AppThemeController(store: MemoryAppThemeStore());
+      addTearDown(settings.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomePage(
+            store: MemoryChoiceListStore(),
+            themeController: settings,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('themeButton')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('confirmElimination')), findsNothing);
+      await tester.ensureVisible(find.byKey(const Key('elimination')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('elimination')));
+      await tester.pumpAndSettle();
+      expect(settings.theme.elimination, isTrue);
+
+      await tester.ensureVisible(find.byKey(const Key('confirmElimination')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirmElimination')));
+      await tester.pumpAndSettle();
+      expect(settings.theme.confirmElimination, isTrue);
+    });
   });
 }

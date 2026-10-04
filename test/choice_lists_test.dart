@@ -79,4 +79,52 @@ void main() {
     expect(list.weights, [ChoiceList.maxWeight, 4]);
     expect(list.withWeight(1, 0).weights.last, ChoiceList.minWeight);
   });
+
+  group('eliminated choices', () {
+    const list = ChoiceList(
+      name: 'Repas',
+      choices: ['Pizza', 'Sushi', 'Burger', 'Salade'],
+      eliminated: {1, 3},
+    );
+
+    test('are left out of the remaining ones', () {
+      expect(list.remaining, [0, 2]);
+      expect(list.withEliminated(0).remaining, [2]);
+      expect(list.withRestored(3).remaining, [0, 2, 3]);
+      expect(list.withAllRestored().remaining, [0, 1, 2, 3]);
+    });
+
+    test('follow their choice when another one is removed', () {
+      final removed = list.withoutChoice(0);
+      expect(removed.choices, ['Sushi', 'Burger', 'Salade']);
+      expect(removed.eliminated, {0, 2});
+      expect(list.withoutChoice(1).eliminated, {2});
+    });
+
+    test('stay out when a choice is added, and go with a new list', () {
+      expect(list.withChoice('Tacos').eliminated, {1, 3});
+      expect(list.copyWith(choices: ['Tacos']).eliminated, isEmpty);
+      expect(list.copyWith(name: 'Midi').eliminated, {1, 3});
+    });
+
+    test('are saved, and missing from older lists', () {
+      final decoded = ChoiceList.fromJson(list.toJson());
+      expect(decoded.eliminated, {1, 3});
+      final old = ChoiceList.fromJson({
+        'name': 'Repas',
+        'choices': ['Pizza', 'Sushi'],
+      });
+      expect(old.eliminated, isEmpty);
+    });
+
+    test('chances can count only some choices', () {
+      const weighted = ChoiceList(
+        name: 'Repas',
+        choices: ['Pizza', 'Sushi', 'Burger'],
+        weights: [2, 1, 1],
+      );
+      expect(weighted.chanceOf(0), 0.5);
+      expect(weighted.chanceOf(0, among: [0, 1]), closeTo(2 / 3, 1e-9));
+    });
+  });
 }
