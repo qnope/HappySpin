@@ -45,6 +45,9 @@ class PlatformWheelSounds implements WheelSounds {
   }
 
   @override
+  void unlock() {}
+
+  @override
   void tick(double volume) {
     if (_ticks.isEmpty) return;
     _play(_ticks[_next++ % _ticks.length], volume);

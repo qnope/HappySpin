@@ -56,8 +56,9 @@ class _HomePageState extends State<HomePage>
 
   bool get _spinning => _physics != null;
 
-  late final WheelFeedback _deviceFeedback =
-      widget.feedback ?? DeviceWheelFeedback();
+  // Made as the page opens, so that on the web it can already unlock sound
+  // on the very first touch.
+  late final WheelFeedback _deviceFeedback;
 
   /// Sounds and vibrations, unless the user turned them off in the settings.
   WheelFeedback get _feedback => widget.themeController?.theme.sounds ?? true
@@ -92,6 +93,7 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+    _deviceFeedback = widget.feedback ?? DeviceWheelFeedback();
     _loadLists();
   }
 
