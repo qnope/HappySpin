@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:flutter/services.dart';
 import 'package:web/web.dart' as web;
@@ -8,7 +9,7 @@ import 'wheel_sounds.dart';
 /// Plays the sounds with the Web Audio API, which starts them right away
 /// where an audio element would lag behind the pegs.
 class PlatformWheelSounds implements WheelSounds {
-  PlatformWheelSounds() {
+  PlatformWheelSounds({required this._enabled}) {
     // Safari only lets a page start its sounds while it handles a touch or
     // a click, so every one of them gets a chance to unlock the sounds,
     // before the app even hears about it.
@@ -17,7 +18,11 @@ class PlatformWheelSounds implements WheelSounds {
     }
   }
 
-  late final JSFunction _onUserGesture = ((web.Event _) => unlock()).toJS;
+  final bool Function() _enabled;
+
+  late final JSFunction _onUserGesture = ((web.Event _) {
+    if (_enabled()) unlock();
+  }).toJS;
 
   web.AudioContext? _context;
   web.AudioBuffer? _tick;
@@ -27,6 +32,7 @@ class PlatformWheelSounds implements WheelSounds {
 
   @override
   void unlock() {
+    _playLikeMedia();
     try {
       final context = _audio;
       if (context.state == 'running') return;
@@ -38,6 +44,21 @@ class PlatformWheelSounds implements WheelSounds {
       source.start();
     } on Object {
       // Without Web Audio, the wheel spins in silence.
+    }
+  }
+
+  /// On iPhone, Web Audio is mixed in like a game's background sound and can
+  /// stay inaudible where a video would be heard. Asking for the "playback"
+  /// audio session (iOS 17 and later) makes the wheel's sounds play like
+  /// media. As with a video, other apps' music pauses while they play.
+  void _playLikeMedia() {
+    try {
+      final navigator = web.window.navigator as JSObject;
+      if (navigator.has('audioSession')) {
+        (navigator['audioSession'] as JSObject)['type'] = 'playback'.toJS;
+      }
+    } on Object {
+      // Older browsers have no audio session to choose.
     }
   }
 

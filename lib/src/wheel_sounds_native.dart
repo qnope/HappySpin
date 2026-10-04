@@ -5,6 +5,8 @@ import 'wheel_sounds.dart';
 
 /// Plays the sounds with the platform's audio players, on iOS and Android.
 class PlatformWheelSounds implements WheelSounds {
+  PlatformWheelSounds({required bool Function() enabled});
+
   /// Ticks can overlap when the wheel spins fast, so several players take
   /// turns playing them.
   static const _voices = 6;

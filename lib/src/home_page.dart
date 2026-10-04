@@ -60,10 +60,12 @@ class _HomePageState extends State<HomePage>
   // on the very first touch.
   late final WheelFeedback _deviceFeedback;
 
+  /// Whether the user wants sounds and vibrations.
+  bool get _soundsOn => widget.themeController?.theme.sounds ?? true;
+
   /// Sounds and vibrations, unless the user turned them off in the settings.
-  WheelFeedback get _feedback => widget.themeController?.theme.sounds ?? true
-      ? _deviceFeedback
-      : const SilentWheelFeedback();
+  WheelFeedback get _feedback =>
+      _soundsOn ? _deviceFeedback : const SilentWheelFeedback();
 
   List<String> get _choices => _lists!.selected.choices;
 
@@ -93,7 +95,8 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _deviceFeedback = widget.feedback ?? DeviceWheelFeedback();
+    _deviceFeedback =
+        widget.feedback ?? DeviceWheelFeedback(enabled: () => _soundsOn);
     _loadLists();
   }
 

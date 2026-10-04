@@ -4,7 +4,9 @@ import 'wheel_sounds_native.dart'
 /// The two sounds of the wheel, played as quickly as the platform allows so
 /// that each tick lands on its peg.
 abstract class WheelSounds {
-  factory WheelSounds() = PlatformWheelSounds;
+  /// [enabled] tells whether the user wants sounds, so that touches do not
+  /// wake the device's audio up when sounds are off.
+  factory WheelSounds({required bool Function() enabled}) = PlatformWheelSounds;
 
   /// Loads the sounds; until then, playing them does nothing.
   Future<void> load();
