@@ -112,13 +112,14 @@ class WheelPalette {
       all.firstWhere((p) => p.id == id, orElse: () => festive);
 }
 
-/// The settings the user picked: light or dark, a wheel palette, and
-/// whether choices can be weighted.
+/// The settings the user picked: light or dark, a wheel palette, whether
+/// choices can be weighted, and whether the wheel makes sounds.
 class AppTheme {
   const AppTheme({
     this.mode = ThemeMode.system,
     this.palette = WheelPalette.festive,
     this.weightedChoices = false,
+    this.sounds = true,
   });
 
   final ThemeMode mode;
@@ -128,14 +129,20 @@ class AppTheme {
   /// counts the same, but the weights already set are kept.
   final bool weightedChoices;
 
+  /// Whether the wheel ticks on each peg, chimes when it stops, and makes
+  /// the device vibrate along.
+  final bool sounds;
+
   AppTheme copyWith({
     ThemeMode? mode,
     WheelPalette? palette,
     bool? weightedChoices,
+    bool? sounds,
   }) => AppTheme(
     mode: mode ?? this.mode,
     palette: palette ?? this.palette,
     weightedChoices: weightedChoices ?? this.weightedChoices,
+    sounds: sounds ?? this.sounds,
   );
 
   ThemeData data(Brightness brightness) => ThemeData(
@@ -151,6 +158,7 @@ class AppTheme {
     'mode': mode.name,
     'palette': palette.id,
     'weightedChoices': weightedChoices,
+    'sounds': sounds,
   });
 
   factory AppTheme.decode(String source) {
@@ -162,6 +170,8 @@ class AppTheme {
       ),
       palette: WheelPalette.byId(json['palette'] as String?),
       weightedChoices: json['weightedChoices'] == true,
+      // On unless turned off, also for settings saved before sounds existed.
+      sounds: json['sounds'] != false,
     );
   }
 
@@ -170,10 +180,11 @@ class AppTheme {
       other is AppTheme &&
       other.mode == mode &&
       other.palette == palette &&
-      other.weightedChoices == weightedChoices;
+      other.weightedChoices == weightedChoices &&
+      other.sounds == sounds;
 
   @override
-  int get hashCode => Object.hash(mode, palette, weightedChoices);
+  int get hashCode => Object.hash(mode, palette, weightedChoices, sounds);
 }
 
 /// Makes the wheel palette available from the [Theme].
@@ -269,7 +280,7 @@ class AppThemeController extends ChangeNotifier {
   }
 }
 
-/// The settings: light or dark, a wheel palette, and weighted choices.
+/// The settings: light or dark, a wheel palette, weighted choices and sounds.
 class ThemeSheet extends StatelessWidget {
   const ThemeSheet({super.key, required this.controller});
 
@@ -348,6 +359,20 @@ class ThemeSheet extends StatelessWidget {
                   value: theme.weightedChoices,
                   onChanged: (on) =>
                       controller.update(theme.copyWith(weightedChoices: on)),
+                ),
+                const SizedBox(height: 16),
+                Text('Sons', style: text.titleSmall),
+                SwitchListTile(
+                  key: const Key('sounds'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Sons et vibrations'),
+                  subtitle: const Text(
+                    'Un tic à chaque clou, un petit carillon à l\'arrêt et '
+                    'des vibrations sur mobile.',
+                  ),
+                  value: theme.sounds,
+                  onChanged: (on) =>
+                      controller.update(theme.copyWith(sounds: on)),
                 ),
               ],
             ),

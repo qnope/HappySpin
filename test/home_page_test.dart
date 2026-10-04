@@ -6,16 +6,34 @@ import 'package:happyspin/src/app_theme.dart';
 import 'package:happyspin/src/choice_lists.dart';
 import 'package:happyspin/src/home_page.dart';
 import 'package:happyspin/src/spinning_wheel.dart';
+import 'package:happyspin/src/wheel_feedback.dart';
+
+/// Counts the ticks and stops the wheel asks for.
+class RecordingFeedback implements WheelFeedback {
+  final ticks = <double>[];
+  var stops = 0;
+
+  @override
+  void preload() {}
+
+  @override
+  void tick(double speed) => ticks.add(speed);
+
+  @override
+  void stop() => stops++;
+}
 
 void main() {
   Future<MemoryChoiceListStore> pump(
     WidgetTester tester, {
     MemoryChoiceListStore? store,
     bool weighted = false,
+    bool sounds = true,
+    WheelFeedback? feedback,
   }) async {
     store ??= MemoryChoiceListStore();
     final settings = AppThemeController(store: MemoryAppThemeStore())
-      ..update(AppTheme(weightedChoices: weighted));
+      ..update(AppTheme(weightedChoices: weighted, sounds: sounds));
     addTearDown(settings.dispose);
     await tester.pumpWidget(
       MaterialApp(
@@ -23,6 +41,7 @@ void main() {
           random: math.Random(1),
           store: store,
           themeController: settings,
+          feedback: feedback,
         ),
       ),
     );
@@ -68,6 +87,37 @@ void main() {
     );
     await tester.pump();
     expect(find.widgetWithText(ListTile, 'Tacos'), findsNothing);
+  });
+
+  testWidgets('the wheel ticks on each peg and chimes once it stops', (
+    tester,
+  ) async {
+    final feedback = RecordingFeedback();
+    await pump(tester, feedback: feedback);
+    await tester.tap(find.byKey(const Key('spin')));
+    for (var i = 0; i < 60; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(feedback.ticks, isNotEmpty);
+    expect(feedback.stops, 0);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('result')), findsOneWidget);
+    expect(feedback.stops, 1);
+    // A wheel launched at 0.7 turn per second or more passes several pegs
+    // of a four-choice wheel, each one ticking as the wheel goes forward.
+    expect(feedback.ticks.length, greaterThan(8));
+    expect(feedback.ticks.first, greaterThan(0));
+  });
+
+  testWidgets('the wheel stays quiet when sounds are off', (tester) async {
+    final feedback = RecordingFeedback();
+    await pump(tester, feedback: feedback, sounds: false);
+    await tester.tap(find.byKey(const Key('spin')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('result')), findsOneWidget);
+    expect(feedback.ticks, isEmpty);
+    expect(feedback.stops, 0);
   });
 
   testWidgets('spinning shows one of the choices', (tester) async {
@@ -314,5 +364,37 @@ void main() {
     final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
     expect(wheel.weights, [3, 1]);
     expect(tester.widget<Text>(find.byKey(const Key('weight0'))).data, '×3');
+  });
+
+  testWidgets('sounds can be turned off in the settings', (tester) async {
+    final settings = AppThemeController(store: MemoryAppThemeStore());
+    addTearDown(settings.dispose);
+    final feedback = RecordingFeedback();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomePage(
+          random: math.Random(1),
+          store: MemoryChoiceListStore(),
+          themeController: settings,
+          feedback: feedback,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('themeButton')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('sounds')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sounds')));
+    await tester.pumpAndSettle();
+    expect(settings.theme.sounds, isFalse);
+
+    Navigator.of(tester.element(find.byKey(const Key('sounds')))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('spin')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('result')), findsOneWidget);
+    expect(feedback.ticks, isEmpty);
   });
 }

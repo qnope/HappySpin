@@ -20,6 +20,15 @@ void main() {
     expect(old.weightedChoices, isFalse);
   });
 
+  test('sounds are on by default and saved when off', () {
+    expect(const AppTheme().sounds, isTrue);
+    const theme = AppTheme(sounds: false);
+    expect(AppTheme.decode(theme.encode()), theme);
+    // Settings saved before the option existed turn sounds on.
+    final old = AppTheme.decode('{"mode":"dark","palette":"ocean"}');
+    expect(old.sounds, isTrue);
+  });
+
   test('unknown saved values fall back to the defaults', () {
     final theme = AppTheme.decode('{"mode":"violet","palette":"inconnue"}');
     expect(theme, const AppTheme());
