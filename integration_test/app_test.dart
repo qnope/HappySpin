@@ -9,6 +9,9 @@ void main() {
   testWidgets('create a list, add choices, spin and get a result', (
     tester,
   ) async {
+    // Whatever the browser's language, follow the French texts below.
+    tester.platformDispatcher.localesTestValue = const [Locale('fr', 'FR')];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     await tester.pumpWidget(const HappySpinApp());
     await tester.pumpAndSettle();
 

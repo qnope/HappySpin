@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/app_localizations.dart';
+import 'language_picker.dart';
+
 /// A set of colors for the wheel, which also tints the rest of the app.
 class WheelPalette {
   const WheelPalette({
     required this.id,
-    required this.name,
     required this.seed,
     required this.colors,
     required this.pointerColor,
@@ -16,7 +18,14 @@ class WheelPalette {
 
   /// Stable identifier, saved on the device.
   final String id;
-  final String name;
+
+  /// The palette's name, in the user's language.
+  String name(AppLocalizations l10n) => switch (id) {
+    'ocean' => l10n.paletteOcean,
+    'forest' => l10n.paletteForest,
+    'candy' => l10n.paletteCandy,
+    _ => l10n.paletteFestive,
+  };
 
   /// Color the app's Material color scheme is derived from.
   final Color seed;
@@ -40,7 +49,6 @@ class WheelPalette {
   static const festive = WheelPalette(
     id: 'festive',
     pointerColor: Color(0xFFD7263D),
-    name: 'Festif',
     seed: Color(0xFFFF7A59),
     colors: [
       Color(0xFFFF7A59),
@@ -57,7 +65,6 @@ class WheelPalette {
   static const ocean = WheelPalette(
     id: 'ocean',
     pointerColor: Color(0xFFF4A261),
-    name: 'Océan',
     seed: Color(0xFF0077B6),
     colors: [
       Color(0xFF03045E),
@@ -74,7 +81,6 @@ class WheelPalette {
   static const forest = WheelPalette(
     id: 'forest',
     pointerColor: Color(0xFFE9B949),
-    name: 'Forêt',
     seed: Color(0xFF2D6A4F),
     colors: [
       Color(0xFF2D6A4F),
@@ -91,7 +97,6 @@ class WheelPalette {
   static const candy = WheelPalette(
     id: 'candy',
     pointerColor: Color(0xFF8E4FB0),
-    name: 'Bonbon',
     seed: Color(0xFFE07A9B),
     labelColor: Color(0xFF3D2C3E),
     colors: [
@@ -114,7 +119,7 @@ class WheelPalette {
 
 /// The settings the user picked: light or dark, a wheel palette, whether
 /// choices can be weighted, whether the wheel makes sounds, and whether the
-/// choices it picks come out of it.
+/// choices it picks come out of it, and the language of the app.
 class AppTheme {
   const AppTheme({
     this.mode = ThemeMode.system,
@@ -123,6 +128,7 @@ class AppTheme {
     this.sounds = true,
     this.elimination = false,
     this.confirmElimination = false,
+    this.language = AppLanguage.device,
   });
 
   final ThemeMode mode;
@@ -144,6 +150,9 @@ class AppTheme {
   /// choice comes out, instead of it coming out on its own.
   final bool confirmElimination;
 
+  /// The language of the app: the device's, or one the user picked.
+  final AppLanguage language;
+
   AppTheme copyWith({
     ThemeMode? mode,
     WheelPalette? palette,
@@ -151,6 +160,7 @@ class AppTheme {
     bool? sounds,
     bool? elimination,
     bool? confirmElimination,
+    AppLanguage? language,
   }) => AppTheme(
     mode: mode ?? this.mode,
     palette: palette ?? this.palette,
@@ -158,6 +168,7 @@ class AppTheme {
     sounds: sounds ?? this.sounds,
     elimination: elimination ?? this.elimination,
     confirmElimination: confirmElimination ?? this.confirmElimination,
+    language: language ?? this.language,
   );
 
   ThemeData data(Brightness brightness) => ThemeData(
@@ -176,6 +187,7 @@ class AppTheme {
     'sounds': sounds,
     'elimination': elimination,
     'confirmElimination': confirmElimination,
+    'language': language.name,
   });
 
   factory AppTheme.decode(String source) {
@@ -191,6 +203,10 @@ class AppTheme {
       sounds: json['sounds'] != false,
       elimination: json['elimination'] == true,
       confirmElimination: json['confirmElimination'] == true,
+      language: AppLanguage.values.firstWhere(
+        (l) => l.name == json['language'],
+        orElse: () => AppLanguage.device,
+      ),
     );
   }
 
@@ -202,7 +218,8 @@ class AppTheme {
       other.weightedChoices == weightedChoices &&
       other.sounds == sounds &&
       other.elimination == elimination &&
-      other.confirmElimination == confirmElimination;
+      other.confirmElimination == confirmElimination &&
+      other.language == language;
 
   @override
   int get hashCode => Object.hash(
@@ -212,6 +229,7 @@ class AppTheme {
     sounds,
     elimination,
     confirmElimination,
+    language,
   );
 }
 
@@ -308,8 +326,8 @@ class AppThemeController extends ChangeNotifier {
   }
 }
 
-/// The settings: light or dark, a wheel palette, weighted choices, sounds
-/// and elimination mode.
+/// The settings: light or dark, a wheel palette, weighted choices,
+/// elimination mode, sounds and language.
 class ThemeSheet extends StatelessWidget {
   const ThemeSheet({super.key, required this.controller});
 
@@ -332,33 +350,34 @@ class ThemeSheet extends StatelessWidget {
       builder: (context, _) {
         final theme = controller.theme;
         final text = Theme.of(context).textTheme;
+        final l10n = AppLocalizations.of(context);
         return SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Réglages', style: text.titleLarge),
+                Text(l10n.settings, style: text.titleLarge),
                 const SizedBox(height: 16),
-                Text('Apparence', style: text.titleSmall),
+                Text(l10n.appearance, style: text.titleSmall),
                 const SizedBox(height: 8),
                 SegmentedButton<ThemeMode>(
                   key: const Key('themeMode'),
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: ThemeMode.system,
                       icon: Icon(Icons.brightness_auto),
-                      label: Text('Auto'),
+                      label: Text(l10n.themeAuto),
                     ),
                     ButtonSegment(
                       value: ThemeMode.light,
                       icon: Icon(Icons.light_mode),
-                      label: Text('Clair'),
+                      label: Text(l10n.themeLight),
                     ),
                     ButtonSegment(
                       value: ThemeMode.dark,
                       icon: Icon(Icons.dark_mode),
-                      label: Text('Sombre'),
+                      label: Text(l10n.themeDark),
                     ),
                   ],
                   selected: {theme.mode},
@@ -366,7 +385,7 @@ class ThemeSheet extends StatelessWidget {
                       controller.update(theme.copyWith(mode: modes.single)),
                 ),
                 const SizedBox(height: 24),
-                Text('Couleurs de la roue', style: text.titleSmall),
+                Text(l10n.wheelColors, style: text.titleSmall),
                 const SizedBox(height: 8),
                 for (final palette in WheelPalette.all)
                   _PaletteTile(
@@ -376,15 +395,12 @@ class ThemeSheet extends StatelessWidget {
                         controller.update(theme.copyWith(palette: palette)),
                   ),
                 const SizedBox(height: 24),
-                Text('Choix', style: text.titleSmall),
+                Text(l10n.choicesSection, style: text.titleSmall),
                 SwitchListTile(
                   key: const Key('weightedChoices'),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Donner un poids aux choix'),
-                  subtitle: const Text(
-                    'Un choix plus lourd a une plus grande part de la roue '
-                    'et plus de chances de sortir.',
-                  ),
+                  title: Text(l10n.weightedChoices),
+                  subtitle: Text(l10n.weightedChoicesHint),
                   value: theme.weightedChoices,
                   onChanged: (on) =>
                       controller.update(theme.copyWith(weightedChoices: on)),
@@ -392,11 +408,8 @@ class ThemeSheet extends StatelessWidget {
                 SwitchListTile(
                   key: const Key('elimination'),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Mode élimination'),
-                  subtitle: const Text(
-                    'Le choix tiré sort de la roue pour les tirages suivants, '
-                    'jusqu\'à ce que tu le remettes.',
-                  ),
+                  title: Text(l10n.elimination),
+                  subtitle: Text(l10n.eliminationHint),
                   value: theme.elimination,
                   onChanged: (on) =>
                       controller.update(theme.copyWith(elimination: on)),
@@ -405,29 +418,31 @@ class ThemeSheet extends StatelessWidget {
                   SwitchListTile(
                     key: const Key('confirmElimination'),
                     contentPadding: const EdgeInsets.only(left: 16),
-                    title: const Text('Demander avant de retirer'),
-                    subtitle: const Text(
-                      'Après chaque tirage, tu choisis de garder le choix '
-                      'ou de le sortir de la roue.',
-                    ),
+                    title: Text(l10n.confirmElimination),
+                    subtitle: Text(l10n.confirmEliminationHint),
                     value: theme.confirmElimination,
                     onChanged: (on) => controller.update(
                       theme.copyWith(confirmElimination: on),
                     ),
                   ),
                 const SizedBox(height: 16),
-                Text('Sons', style: text.titleSmall),
+                Text(l10n.soundsSection, style: text.titleSmall),
                 SwitchListTile(
                   key: const Key('sounds'),
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Sons et vibrations'),
-                  subtitle: const Text(
-                    'Un tic à chaque clou, un petit carillon à l\'arrêt et '
-                    'des vibrations sur mobile.',
-                  ),
+                  title: Text(l10n.sounds),
+                  subtitle: Text(l10n.soundsHint),
                   value: theme.sounds,
                   onChanged: (on) =>
                       controller.update(theme.copyWith(sounds: on)),
+                ),
+                const SizedBox(height: 16),
+                Text(l10n.language, style: text.titleSmall),
+                const SizedBox(height: 8),
+                LanguagePicker(
+                  selected: theme.language,
+                  onSelected: (language) =>
+                      controller.update(theme.copyWith(language: language)),
                 ),
               ],
             ),
@@ -465,7 +480,7 @@ class _PaletteTile extends StatelessWidget {
       ),
       child: ListTile(
         onTap: onTap,
-        title: Text(palette.name),
+        title: Text(palette.name(AppLocalizations.of(context))),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
           child: Row(

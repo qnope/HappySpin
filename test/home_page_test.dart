@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:happyspin/l10n/app_localizations.dart';
 import 'package:happyspin/src/app_theme.dart';
 import 'package:happyspin/src/choice_lists.dart';
 import 'package:happyspin/src/home_page.dart';
@@ -46,6 +47,9 @@ void main() {
     addTearDown(settings.dispose);
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: HomePage(
           random: math.Random(1),
           store: store,
@@ -341,6 +345,9 @@ void main() {
       ListenableBuilder(
         listenable: settings,
         builder: (context, _) => MaterialApp(
+          locale: const Locale('fr'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: HomePage(
             random: math.Random(1),
             store: MemoryChoiceListStore(
@@ -381,6 +388,9 @@ void main() {
     final feedback = RecordingFeedback();
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: HomePage(
           random: math.Random(1),
           store: MemoryChoiceListStore(),
@@ -553,6 +563,9 @@ void main() {
       addTearDown(settings.dispose);
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('fr'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: HomePage(
             store: MemoryChoiceListStore(),
             themeController: settings,
