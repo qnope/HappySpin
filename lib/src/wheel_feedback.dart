@@ -30,7 +30,7 @@ class DeviceWheelFeedback implements WheelFeedback {
     HapticFeedback.selectionClick();
     preload();
     // Louder when the wheel turns fast, softer as it slows down.
-    _sounds.tick((0.35 + speed.abs() / 8).clamp(0.35, 1.0));
+    _sounds.tick((0.5 + speed.abs() / 8).clamp(0.5, 1.0));
   }
 
   @override

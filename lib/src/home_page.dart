@@ -226,12 +226,17 @@ class _HomePageState extends State<HomePage>
   void _onTick(Duration elapsed) {
     final physics = _physics!;
     final clicks = physics.clicks;
+    final knocks = physics.knocks;
     physics.braking = _pressing.isNotEmpty;
     // Cap the step so that a dropped frame does not make the wheel jump.
     final seconds = (elapsed - _lastTick).inMicroseconds / 1e6;
     physics.advance(math.min(seconds, 0.1));
     _lastTick = elapsed;
-    if (physics.clicks != clicks) _feedback.tick(physics.velocity);
+    // A tick for every peg getting past the pointer, and for a peg knocking
+    // against it without getting past.
+    if (physics.clicks != clicks || physics.knocks != knocks) {
+      _feedback.tick(physics.velocity);
+    }
 
     final done = physics.isAtRest;
     setState(() {
