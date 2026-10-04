@@ -69,10 +69,23 @@ class _HomePageState extends State<HomePage>
   /// Whether the user turned weights on in the settings.
   bool get _weighted => widget.themeController?.theme.weightedChoices ?? false;
 
+  /// Whether the user turned elimination mode on in the settings.
+  bool get _eliminating => widget.themeController?.theme.elimination ?? false;
+
+  /// Indexes of the choices on the wheel: all of them, or in elimination mode
+  /// only the ones that have not come out yet. Choices that came out are
+  /// kept for when elimination mode is turned back on.
+  List<int> get _onWheel => _eliminating
+      ? _lists!.selected.remaining
+      : [for (var i = 0; i < _choices.length; i++) i];
+
+  List<String> get _wheelChoices => [for (final i in _onWheel) _choices[i]];
+
   /// Weights the wheel uses: all the same when weights are turned off, while
   /// the ones saved with the list are kept for when they are turned back on.
-  List<int> get _weights =>
-      _weighted ? _lists!.selected.weights : List.filled(_choices.length, 1);
+  List<int> get _weights => [
+    for (final i in _onWheel) _weighted ? _lists!.selected.weightOf(i) : 1,
+  ];
 
   WheelLayout get _layout => WheelLayout(_weights);
 
@@ -108,7 +121,18 @@ class _HomePageState extends State<HomePage>
 
   void _resetRotation() {
     // Keep the pointer inside the first choice, away from its peg.
-    setState(() => _rotation = _choices.isEmpty ? 0 : -_layout.sweep(0) / 4);
+    setState(() => _rotation = _onWheel.isEmpty ? 0 : -_layout.sweep(0) / 4);
+  }
+
+  /// Keeps the pointer inside the choice under it, away from its peg, once
+  /// choices came out of the wheel or went back in.
+  void _settleRotation() {
+    if (_onWheel.isEmpty) return;
+    final layout = _layout;
+    final index = layout.indexAtRotation(_rotation);
+    setState(
+      () => _rotation = -(layout.start(index) + layout.sweep(index) / 4),
+    );
   }
 
   void _selectList(int index) {
@@ -204,12 +228,27 @@ class _HomePageState extends State<HomePage>
     _setSelected(_lists!.selected.withWeight(index, weight));
   }
 
+  void _eliminate(int index) {
+    _setSelected(_lists!.selected.withEliminated(index));
+    _settleRotation();
+  }
+
+  void _restore(int index) {
+    _setSelected(_lists!.selected.withRestored(index));
+    _settleRotation();
+  }
+
+  void _restoreAll() {
+    _setSelected(_lists!.selected.withAllRestored());
+    _settleRotation();
+  }
+
   void _clearChoices() {
     _setSelected(_lists!.selected.copyWith(choices: [], weights: []));
   }
 
   void _spinWheel() {
-    if (_spinning || _choices.length < 2) return;
+    if (_spinning || _onWheel.length < 2) return;
     setState(() {
       _physics = WheelPhysics(
         layout: _layout,
@@ -247,31 +286,71 @@ class _HomePageState extends State<HomePage>
     if (done) {
       _ticker.stop();
       _feedback.stop();
-      _showResult(physics.selectedIndex);
+      _showResult(_onWheel[physics.selectedIndex]);
     }
   }
 
-  void _showResult(int index) {
+  /// Shows the choice at [index] the wheel picked, and in elimination mode
+  /// takes it out of the wheel, right away or if the user says so.
+  Future<void> _showResult(int index) async {
     final winner = _choices[index];
-    showDialog<void>(
+    final eliminating = _eliminating;
+    final confirm =
+        eliminating &&
+        (widget.themeController?.theme.confirmElimination ?? false);
+    final eliminate = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.celebration, size: 40),
-        title: const Text('Le sort a choisi'),
-        content: Text(
-          winner,
-          key: const Key('result'),
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Super !'),
+      builder: (context) {
+        final text = Theme.of(context).textTheme;
+        return AlertDialog(
+          icon: const Icon(Icons.celebration, size: 40),
+          title: const Text('Le sort a choisi'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                winner,
+                key: const Key('result'),
+                textAlign: TextAlign.center,
+                style: text.headlineMedium,
+              ),
+              if (eliminating) ...[
+                const SizedBox(height: 12),
+                Text(
+                  confirm
+                      ? 'Le sortir de la roue pour les prochains tirages ?'
+                      : 'Il sort de la roue pour les prochains tirages.',
+                  key: const Key('eliminationNote'),
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium,
+                ),
+              ],
+            ],
           ),
-        ],
-      ),
+          actions: [
+            if (confirm) ...[
+              TextButton(
+                key: const Key('keepChoice'),
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Le garder'),
+              ),
+              FilledButton(
+                key: const Key('eliminateChoice'),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Le sortir'),
+              ),
+            ] else
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Super !'),
+              ),
+          ],
+        );
+      },
     );
+    // Without confirmation, the choice comes out however the dialog closes.
+    if (!mounted || !eliminating || (confirm && eliminate != true)) return;
+    _eliminate(index);
   }
 
   @override
@@ -398,7 +477,14 @@ class _HomePageState extends State<HomePage>
   };
 
   Widget _buildWheel() {
-    final canSpin = !_spinning && _choices.length >= 2;
+    final onWheel = _onWheel;
+    final canSpin = !_spinning && onWheel.length >= 2;
+    // In elimination mode, once too few choices are left to spin, the wheel
+    // says so and offers to put the others back.
+    final exhausted =
+        _eliminating &&
+        _lists!.selected.eliminated.isNotEmpty &&
+        onWheel.length < 2;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -415,7 +501,7 @@ class _HomePageState extends State<HomePage>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
                     child: SpinningWheel(
-                      choices: _choices,
+                      choices: _wheelChoices,
                       weights: _weights,
                       rotation: _rotation,
                       pointerDeflection: _pointer,
@@ -426,18 +512,41 @@ class _HomePageState extends State<HomePage>
             ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            key: const Key('spin'),
-            onPressed: canSpin ? _spinWheel : null,
-            icon: const Icon(Icons.refresh),
-            label: Text(
-              _choices.length < 2 ? 'Ajoute au moins 2 choix' : 'Faire tourner',
+          if (exhausted) ...[
+            Text(
+              onWheel.isEmpty
+                  ? 'Tous les choix sont sortis.'
+                  : 'Il ne reste que « ${_choices[onWheel.single]} » !',
+              key: const Key('lastChoice'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(220, 52),
-              textStyle: const TextStyle(fontSize: 18),
+            const SizedBox(height: 8),
+            FilledButton.tonalIcon(
+              key: const Key('restoreAllWheel'),
+              onPressed: _restoreAll,
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Tout remettre dans la roue'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(220, 52),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
             ),
-          ),
+          ] else
+            FilledButton.icon(
+              key: const Key('spin'),
+              onPressed: canSpin ? _spinWheel : null,
+              icon: const Icon(Icons.refresh),
+              label: Text(
+                onWheel.length < 2
+                    ? 'Ajoute au moins 2 choix'
+                    : 'Faire tourner',
+              ),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(220, 52),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
+            ),
         ],
       ),
     );
@@ -479,6 +588,9 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildEditor() {
     final palette = WheelTheme.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final onWheel = _onWheel;
+    final out = _eliminating ? _lists!.selected.eliminated.length : 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
@@ -502,41 +614,89 @@ class _HomePageState extends State<HomePage>
             ),
           ),
           const SizedBox(height: 8),
+          if (out > 0)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    out == 1 ? '1 choix sorti' : '$out choix sortis',
+                    key: const Key('eliminatedCount'),
+                  ),
+                ),
+                TextButton.icon(
+                  key: const Key('restoreAll'),
+                  onPressed: _spinning ? null : _restoreAll,
+                  icon: const Icon(Icons.restart_alt),
+                  label: const Text('Tout remettre'),
+                ),
+              ],
+            ),
           Expanded(
             child: _choices.isEmpty
                 ? const Center(child: Text('Aucun choix pour le moment.'))
                 : ListView.builder(
                     itemCount: _choices.length,
-                    itemBuilder: (context, i) => ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        radius: 8,
-                        backgroundColor: palette.segmentColor(
-                          i,
-                          _choices.length,
+                    itemBuilder: (context, i) {
+                      final eliminated =
+                          _eliminating && _lists!.selected.isEliminated(i);
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 8,
+                          // Same color as the choice's segment on the wheel.
+                          backgroundColor: eliminated
+                              ? scheme.outlineVariant
+                              : palette.segmentColor(
+                                  onWheel.indexOf(i),
+                                  onWheel.length,
+                                ),
                         ),
-                      ),
-                      title: Text(_choices[i]),
-                      subtitle: _weighted
-                          ? Text(
-                              _chanceLabel(_lists!.selected.chanceOf(i)),
-                              key: Key('chance$i'),
-                            )
-                          : null,
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_weighted) ..._buildWeightStepper(i),
-                          IconButton(
-                            tooltip: 'Retirer',
-                            onPressed: _spinning
-                                ? null
-                                : () => _removeChoice(i),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                    ),
+                        title: Text(
+                          _choices[i],
+                          style: eliminated
+                              ? TextStyle(
+                                  color: scheme.outline,
+                                  decoration: TextDecoration.lineThrough,
+                                )
+                              : null,
+                        ),
+                        subtitle: eliminated
+                            ? Text(
+                                'Sorti de la roue',
+                                key: Key('eliminated$i'),
+                                style: TextStyle(color: scheme.outline),
+                              )
+                            : _weighted
+                            ? Text(
+                                _chanceLabel(
+                                  _lists!.selected.chanceOf(i, among: onWheel),
+                                ),
+                                key: Key('chance$i'),
+                              )
+                            : null,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (eliminated)
+                              IconButton(
+                                key: Key('restore$i'),
+                                tooltip: 'Remettre dans la roue',
+                                onPressed: _spinning ? null : () => _restore(i),
+                                icon: const Icon(Icons.undo),
+                              )
+                            else if (_weighted)
+                              ..._buildWeightStepper(i),
+                            IconButton(
+                              tooltip: 'Retirer',
+                              onPressed: _spinning
+                                  ? null
+                                  : () => _removeChoice(i),
+                              icon: const Icon(Icons.close),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
           ),
         ],

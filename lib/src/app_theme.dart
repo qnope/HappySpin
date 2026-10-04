@@ -113,13 +113,16 @@ class WheelPalette {
 }
 
 /// The settings the user picked: light or dark, a wheel palette, whether
-/// choices can be weighted, and whether the wheel makes sounds.
+/// choices can be weighted, whether the wheel makes sounds, and whether the
+/// choices it picks come out of it.
 class AppTheme {
   const AppTheme({
     this.mode = ThemeMode.system,
     this.palette = WheelPalette.festive,
     this.weightedChoices = false,
     this.sounds = true,
+    this.elimination = false,
+    this.confirmElimination = false,
   });
 
   final ThemeMode mode;
@@ -133,16 +136,28 @@ class AppTheme {
   /// the device vibrate along.
   final bool sounds;
 
+  /// Whether the choice the wheel picks comes out of it for the next spins,
+  /// until it is put back.
+  final bool elimination;
+
+  /// Whether, in elimination mode, the user is asked before the picked
+  /// choice comes out, instead of it coming out on its own.
+  final bool confirmElimination;
+
   AppTheme copyWith({
     ThemeMode? mode,
     WheelPalette? palette,
     bool? weightedChoices,
     bool? sounds,
+    bool? elimination,
+    bool? confirmElimination,
   }) => AppTheme(
     mode: mode ?? this.mode,
     palette: palette ?? this.palette,
     weightedChoices: weightedChoices ?? this.weightedChoices,
     sounds: sounds ?? this.sounds,
+    elimination: elimination ?? this.elimination,
+    confirmElimination: confirmElimination ?? this.confirmElimination,
   );
 
   ThemeData data(Brightness brightness) => ThemeData(
@@ -159,6 +174,8 @@ class AppTheme {
     'palette': palette.id,
     'weightedChoices': weightedChoices,
     'sounds': sounds,
+    'elimination': elimination,
+    'confirmElimination': confirmElimination,
   });
 
   factory AppTheme.decode(String source) {
@@ -172,6 +189,8 @@ class AppTheme {
       weightedChoices: json['weightedChoices'] == true,
       // On unless turned off, also for settings saved before sounds existed.
       sounds: json['sounds'] != false,
+      elimination: json['elimination'] == true,
+      confirmElimination: json['confirmElimination'] == true,
     );
   }
 
@@ -181,10 +200,19 @@ class AppTheme {
       other.mode == mode &&
       other.palette == palette &&
       other.weightedChoices == weightedChoices &&
-      other.sounds == sounds;
+      other.sounds == sounds &&
+      other.elimination == elimination &&
+      other.confirmElimination == confirmElimination;
 
   @override
-  int get hashCode => Object.hash(mode, palette, weightedChoices, sounds);
+  int get hashCode => Object.hash(
+    mode,
+    palette,
+    weightedChoices,
+    sounds,
+    elimination,
+    confirmElimination,
+  );
 }
 
 /// Makes the wheel palette available from the [Theme].
@@ -280,7 +308,8 @@ class AppThemeController extends ChangeNotifier {
   }
 }
 
-/// The settings: light or dark, a wheel palette, weighted choices and sounds.
+/// The settings: light or dark, a wheel palette, weighted choices, sounds
+/// and elimination mode.
 class ThemeSheet extends StatelessWidget {
   const ThemeSheet({super.key, required this.controller});
 
@@ -360,6 +389,32 @@ class ThemeSheet extends StatelessWidget {
                   onChanged: (on) =>
                       controller.update(theme.copyWith(weightedChoices: on)),
                 ),
+                SwitchListTile(
+                  key: const Key('elimination'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Mode élimination'),
+                  subtitle: const Text(
+                    'Le choix tiré sort de la roue pour les tirages suivants, '
+                    'jusqu\'à ce que tu le remettes.',
+                  ),
+                  value: theme.elimination,
+                  onChanged: (on) =>
+                      controller.update(theme.copyWith(elimination: on)),
+                ),
+                if (theme.elimination)
+                  SwitchListTile(
+                    key: const Key('confirmElimination'),
+                    contentPadding: const EdgeInsets.only(left: 16),
+                    title: const Text('Demander avant de retirer'),
+                    subtitle: const Text(
+                      'Après chaque tirage, tu choisis de garder le choix '
+                      'ou de le sortir de la roue.',
+                    ),
+                    value: theme.confirmElimination,
+                    onChanged: (on) => controller.update(
+                      theme.copyWith(confirmElimination: on),
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 Text('Sons', style: text.titleSmall),
                 SwitchListTile(

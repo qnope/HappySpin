@@ -29,6 +29,17 @@ void main() {
     expect(old.sounds, isTrue);
   });
 
+  test('elimination mode is off by default and saved when on', () {
+    expect(const AppTheme().elimination, isFalse);
+    expect(const AppTheme().confirmElimination, isFalse);
+    const theme = AppTheme(elimination: true, confirmElimination: true);
+    expect(AppTheme.decode(theme.encode()), theme);
+    expect(theme, isNot(const AppTheme(elimination: true)));
+    // Settings saved before the option existed keep it off.
+    final old = AppTheme.decode('{"mode":"dark","palette":"ocean"}');
+    expect(old.elimination, isFalse);
+  });
+
   test('unknown saved values fall back to the defaults', () {
     final theme = AppTheme.decode('{"mode":"violet","palette":"inconnue"}');
     expect(theme, const AppTheme());
