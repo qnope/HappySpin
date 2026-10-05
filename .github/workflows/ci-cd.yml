@@ -133,6 +133,18 @@ jobs:
           --title "HappySpin Android (build ${{ github.run_number }})"
           --notes "APK installable directement sur Android. Lien permanent vers la dernière version : https://github.com/${{ github.repository }}/releases/latest/download/happyspin.apk"
           --latest
+      # Only the latest APK is kept: older Android releases and their tags go.
+      - name: Delete older Android releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT: android-${{ github.run_number }}
+        run: |
+          gh release list --repo "${{ github.repository }}" --limit 1000 \
+            --json tagName --jq '.[].tagName | select(startswith("android-"))' |
+            { grep -vx "$CURRENT" || true; } |
+            while read -r tag; do
+              gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag
+            done
 
   deploy-pages:
     name: Déploiement GitHub Pages
