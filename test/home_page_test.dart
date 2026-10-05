@@ -459,7 +459,7 @@ void main() {
 
       final first = await spin(tester);
       // Coming out of the wheel is no win: no celebration, no chime.
-      expect(find.text('Éliminé'), findsOneWidget);
+      expect(find.widgetWithText(AlertDialog, 'Éliminé'), findsOneWidget);
       expect(find.text('Le sort a choisi'), findsNothing);
       expect(find.byKey(const Key('eliminationNote')), findsOneWidget);
       expect(feedback.stops, 1);
@@ -468,19 +468,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), isNot(contains(first)));
       expect(wheelChoices(tester), hasLength(2));
-      expect(find.text('1 choix sorti'), findsOneWidget);
+      expect(find.text('1 choix éliminé'), findsOneWidget);
       // Still in the list, marked as out.
       expect(find.widgetWithText(ListTile, first), findsOneWidget);
-      expect(find.text('Sorti de la roue'), findsOneWidget);
+      expect(find.text('Éliminé'), findsOneWidget);
       expect(store.saved!.selected.eliminated, hasLength(1));
 
       final second = await spin(tester);
       expect(second, isNot(first));
-      expect(find.text('Éliminé'), findsOneWidget);
+      expect(find.widgetWithText(AlertDialog, 'Éliminé'), findsOneWidget);
       await tester.tap(find.byKey(const Key('next')));
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), hasLength(1));
-      expect(find.text('2 choix sortis'), findsOneWidget);
+      expect(find.text('2 choix éliminés'), findsOneWidget);
 
       // The last choice left wins, just like a normal pick.
       final last = wheelChoices(tester).single;
@@ -501,7 +501,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
       expect(find.byKey(const Key('spin')), findsOneWidget);
-      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(find.text('Éliminé'), findsNothing);
       expect(store.saved!.selected.eliminated, isEmpty);
     });
 
@@ -572,7 +572,7 @@ void main() {
         store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0}),
       );
       expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
-      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(find.text('Éliminé'), findsNothing);
       expect(find.byKey(const Key('restoreAll')), findsNothing);
       await spin(tester);
       expect(find.byKey(const Key('eliminationNote')), findsNothing);

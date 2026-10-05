@@ -73,7 +73,7 @@
   "moreLikely": "Plus de chances",
   "newChoice": "Nouveau choix",
   "add": "Ajouter",
-  "eliminatedCount": "{count, plural, =1{1 choix sorti} other{{count} choix sortis}}",
+  "eliminatedCount": "{count, plural, =1{1 choix éliminé} other{{count} choix éliminés}}",
   "@eliminatedCount": {
     "placeholders": {
       "count": {
@@ -83,7 +83,7 @@
   },
   "restoreAll": "Tout remettre",
   "noChoicesYet": "Aucun choix pour le moment.",
-  "eliminated": "Sorti de la roue",
+  "eliminated": "Éliminé",
   "restore": "Remettre dans la roue",
   "remove": "Retirer",
   "percent": "{value} %",

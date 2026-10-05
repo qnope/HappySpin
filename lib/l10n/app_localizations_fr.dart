@@ -189,8 +189,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count choix sortis',
-      one: '1 choix sorti',
+      other: '$count choix éliminés',
+      one: '1 choix éliminé',
     );
     return '$_temp0';
   }
@@ -202,7 +202,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noChoicesYet => 'Aucun choix pour le moment.';
 
   @override
-  String get eliminated => 'Sorti de la roue';
+  String get eliminated => 'Éliminé';
 
   @override
   String get restore => 'Remettre dans la roue';

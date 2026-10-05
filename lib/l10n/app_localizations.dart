@@ -415,7 +415,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminatedCount.
   ///
   /// In fr, this message translates to:
-  /// **'{count, plural, =1{1 choix sorti} other{{count} choix sortis}}'**
+  /// **'{count, plural, =1{1 choix éliminé} other{{count} choix éliminés}}'**
   String eliminatedCount(int count);
 
   /// No description provided for @restoreAll.
@@ -433,7 +433,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminated.
   ///
   /// In fr, this message translates to:
-  /// **'Sorti de la roue'**
+  /// **'Éliminé'**
   String get eliminated;
 
   /// No description provided for @restore.

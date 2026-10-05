@@ -187,8 +187,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count opciones fuera',
-      one: '1 opción fuera',
+      other: '$count opciones eliminadas',
+      one: '1 opción eliminada',
     );
     return '$_temp0';
   }
@@ -200,7 +200,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noChoicesYet => 'Todavía no hay opciones.';
 
   @override
-  String get eliminated => 'Fuera de la ruleta';
+  String get eliminated => 'Eliminada';
 
   @override
   String get restore => 'Volver a poner en la ruleta';
