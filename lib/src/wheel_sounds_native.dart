@@ -34,8 +34,9 @@ class PlatformWheelSounds implements WheelSounds {
   Future<void> load() async {
     try {
       await AudioPlayer.global.setAudioContext(audioContext());
-    } on Object {
+    } on Object catch (error) {
       // Not every platform lets the audio context be changed.
+      debugPrint('HappySpin: audio context not set: $error');
     }
     final ticks = [
       for (var i = 0; i < _voices; i++)
@@ -72,8 +73,9 @@ class PlatformWheelSounds implements WheelSounds {
     try {
       await player.setVolume(volume);
       await player.resume();
-    } on Object {
+    } on Object catch (error) {
       // A missed sound is not worth interrupting the spin for.
+      debugPrint('HappySpin: sound not played: $error');
     }
   }
 }
