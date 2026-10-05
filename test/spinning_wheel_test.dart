@@ -26,4 +26,39 @@ void main() {
     final hub = tester.getRect(find.byKey(SpinningWheel.hubKey));
     expect(hub.center, wheel.center);
   });
+
+  testWidgets('turning the wheel does not paint its segments again', (
+    tester,
+  ) async {
+    Widget wheel(double rotation) => MaterialApp(
+      home: Center(
+        child: SizedBox(
+          width: 300,
+          // New lists with the same choices, as the page makes when it
+          // rebuilds.
+          child: SpinningWheel(
+            choices: ['A', 'B', 'C'].toList(),
+            colors: [Colors.red, Colors.green, Colors.blue].toList(),
+            weights: [1, 2, 1].toList(),
+            rotation: rotation,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(wheel(0));
+
+    await tester.pumpWidget(wheel(1), phase: EnginePhase.layout);
+
+    final segments = tester.renderObject(
+      find
+          .descendant(
+            of: find.byType(Transform),
+            matching: find.byType(CustomPaint),
+          )
+          .first,
+    );
+    expect(segments.debugNeedsPaint, isFalse);
+    // Finish the frame left half done.
+    await tester.pump();
+  });
 }
