@@ -47,9 +47,16 @@ class _HomePageState extends State<HomePage>
       widget.store ?? PreferencesChoiceListStore();
 
   ChoiceLists? _lists;
-  // Start with the pointer inside the first choice, away from its peg.
-  double _rotation = -segmentAngle(4) / 4;
-  double _pointer = 0;
+  // Where the wheel and its pointer are. They change on every frame of a
+  // spin, so only the wheel listens to them instead of the whole page
+  // rebuilding. Start with the pointer inside the first choice, away from
+  // its peg.
+  final ValueNotifier<({double rotation, double pointer})> _pose =
+      ValueNotifier((rotation: -segmentAngle(4) / 4, pointer: 0));
+
+  double get _rotation => _pose.value.rotation;
+  set _rotation(double rotation) =>
+      _pose.value = (rotation: rotation, pointer: 0);
   WheelPhysics? _physics;
   Duration _lastTick = Duration.zero;
   // Fingers pressing on the wheel, which brakes it while it spins.
@@ -225,6 +232,7 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     _ticker.dispose();
+    _pose.dispose();
     _input.dispose();
     _inputFocus.dispose();
     super.dispose();
@@ -296,12 +304,13 @@ class _HomePageState extends State<HomePage>
     }
 
     final done = physics.isAtRest;
-    setState(() {
-      _rotation = physics.angle;
-      _pointer = done ? 0 : physics.pointer;
-      if (done) _physics = null;
-    });
+    _pose.value = (
+      rotation: physics.angle,
+      pointer: done ? 0 : physics.pointer,
+    );
     if (done) {
+      // Only the end of the spin changes the rest of the page.
+      setState(() => _physics = null);
       _ticker.stop();
       _feedback.stop(celebrate: !_eliminating);
       _showResult(_onWheel[physics.selectedIndex]);
@@ -551,17 +560,7 @@ class _HomePageState extends State<HomePage>
                   onTap: canSpin ? _spinWheel : null,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 520),
-                    child: SpinningWheel(
-                      choices: _wheelChoices,
-                      // Choices keep their color when others come out.
-                      colors: [
-                        for (final i in onWheel)
-                          palette.segmentColor(i, _choices.length),
-                      ],
-                      weights: _weights,
-                      rotation: _rotation,
-                      pointerDeflection: _pointer,
-                    ),
+                    child: _buildSpinningWheel(palette, onWheel),
                   ),
                 ),
               ),
@@ -637,6 +636,27 @@ class _HomePageState extends State<HomePage>
         icon: const Icon(Icons.add_circle_outline),
       ),
     ];
+  }
+
+  Widget _buildSpinningWheel(WheelPalette palette, List<int> onWheel) {
+    // Made once per build of the page, so that the wheel keeps the same
+    // choices on every frame of a spin and does not paint them again.
+    final choices = _wheelChoices;
+    // Choices keep their color when others come out.
+    final colors = [
+      for (final i in onWheel) palette.segmentColor(i, _choices.length),
+    ];
+    final weights = _weights;
+    return ValueListenableBuilder(
+      valueListenable: _pose,
+      builder: (context, pose, _) => SpinningWheel(
+        choices: choices,
+        colors: colors,
+        weights: weights,
+        rotation: pose.rotation,
+        pointerDeflection: pose.pointer,
+      ),
+    );
   }
 
   Widget _buildEditor() {

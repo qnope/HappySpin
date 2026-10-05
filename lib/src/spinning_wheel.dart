@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
@@ -49,17 +50,24 @@ class SpinningWheel extends StatelessWidget {
             padding: const EdgeInsets.only(top: 18),
             child: Transform.rotate(
               angle: rotation,
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: _WheelPainter(
-                  choices: choices,
-                  colors: colors,
-                  layout: choices.isEmpty
-                      ? null
-                      : WheelLayout(weights ?? List.filled(choices.length, 1)),
-                  palette: palette,
-                  rimColor: scheme.surface,
-                  emptyColor: scheme.surfaceContainerHighest,
+              // Keeps the painted wheel while it turns: each frame of a spin
+              // only rotates it, without drawing the segments and laying
+              // out the labels again.
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _WheelPainter(
+                    choices: choices,
+                    colors: colors,
+                    layout: choices.isEmpty
+                        ? null
+                        : WheelLayout(
+                            weights ?? List.filled(choices.length, 1),
+                          ),
+                    palette: palette,
+                    rimColor: scheme.surface,
+                    emptyColor: scheme.surfaceContainerHighest,
+                  ),
                 ),
               ),
             ),
@@ -71,11 +79,13 @@ class SpinningWheel extends StatelessWidget {
               // swings its tip to the right.
               angle: -pointerDeflection.clamp(-1.5, 1.5) * maxPointerAngle,
               alignment: const Alignment(0, -0.27),
-              child: CustomPaint(
-                size: const Size(32, 44),
-                painter: _PointerPainter(
-                  color: palette.pointerColor,
-                  outline: Colors.white,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  size: const Size(32, 44),
+                  painter: _PointerPainter(
+                    color: palette.pointerColor,
+                    outline: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -87,12 +97,14 @@ class SpinningWheel extends StatelessWidget {
               // The hub turns with the wheel, like the axle holding it.
               child: Transform.rotate(
                 angle: rotation,
-                child: CustomPaint(
-                  key: hubKey,
-                  size: const Size.square(52),
-                  painter: _HubPainter(
-                    color: palette.pointerColor,
-                    collar: scheme.surface,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    key: hubKey,
+                    size: const Size.square(52),
+                    painter: _HubPainter(
+                      color: palette.pointerColor,
+                      collar: scheme.surface,
+                    ),
                   ),
                 ),
               ),
@@ -239,8 +251,10 @@ class _WheelPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WheelPainter old) =>
-      old.choices != choices ||
-      old.colors != colors ||
+      // The page makes new lists when it rebuilds; only a change in what
+      // they hold needs the wheel painted again.
+      !listEquals(old.choices, choices) ||
+      !listEquals(old.colors, colors) ||
       old.layout != layout ||
       old.palette != palette ||
       old.rimColor != rimColor ||
