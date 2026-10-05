@@ -9,10 +9,11 @@ import 'package:happyspin/src/home_page.dart';
 import 'package:happyspin/src/spinning_wheel.dart';
 import 'package:happyspin/src/wheel_feedback.dart';
 
-/// Counts the ticks and stops the wheel asks for.
+/// Counts the ticks, stops and chimes the wheel asks for.
 class RecordingFeedback implements WheelFeedback {
   final ticks = <double>[];
   var stops = 0;
+  var chimes = 0;
 
   @override
   void preload() {}
@@ -21,7 +22,13 @@ class RecordingFeedback implements WheelFeedback {
   void tick(double speed) => ticks.add(speed);
 
   @override
-  void stop() => stops++;
+  void stop({bool celebrate = true}) {
+    stops++;
+    if (celebrate) chimes++;
+  }
+
+  @override
+  void celebrate() => chimes++;
 }
 
 void main() {
@@ -439,38 +446,53 @@ void main() {
       return tester.widget<Text>(find.byKey(const Key('result'))).data!;
     }
 
-    testWidgets('picked choices come out until one is left, then go back', (
+    testWidgets('picked choices come out until one is left, which wins', (
       tester,
     ) async {
+      final feedback = RecordingFeedback();
       final store = await pump(
         tester,
         elimination: true,
+        feedback: feedback,
         store: storeWith(['Pizza', 'Sushi', 'Burger']),
       );
 
       final first = await spin(tester);
+      // Coming out of the wheel is no win: no celebration, no chime.
+      expect(find.widgetWithText(AlertDialog, 'Éliminé'), findsOneWidget);
+      expect(find.text('Le sort a choisi'), findsNothing);
       expect(find.byKey(const Key('eliminationNote')), findsOneWidget);
-      await tester.tap(find.text('Super !'));
+      expect(feedback.stops, 1);
+      expect(feedback.chimes, 0);
+      await tester.tap(find.byKey(const Key('next')));
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), isNot(contains(first)));
       expect(wheelChoices(tester), hasLength(2));
-      expect(find.text('1 choix sorti'), findsOneWidget);
+      expect(find.text('1 choix éliminé'), findsOneWidget);
       // Still in the list, marked as out.
       expect(find.widgetWithText(ListTile, first), findsOneWidget);
-      expect(find.text('Sorti de la roue'), findsOneWidget);
+      expect(find.text('Éliminé'), findsOneWidget);
       expect(store.saved!.selected.eliminated, hasLength(1));
 
       final second = await spin(tester);
       expect(second, isNot(first));
-      await tester.tap(find.text('Super !'));
+      expect(find.widgetWithText(AlertDialog, 'Éliminé'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('next')));
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), hasLength(1));
-      expect(find.text('2 choix sortis'), findsOneWidget);
+      expect(find.text('2 choix éliminés'), findsOneWidget);
 
-      // One choice left: no more spinning, the app says which one it is.
+      // The last choice left wins, just like a normal pick.
       final last = wheelChoices(tester).single;
+      expect(find.text('Le sort a choisi'), findsOneWidget);
+      expect(tester.widget<Text>(find.byKey(const Key('result'))).data, last);
+      expect(feedback.chimes, 1);
+      await tester.tap(find.text('Super !'));
+      await tester.pumpAndSettle();
+
+      // No more spinning, the app says which one won.
       expect(find.byKey(const Key('spin')), findsNothing);
-      expect(find.text('Il ne reste que « $last » !'), findsOneWidget);
+      expect(find.text("« $last » l'emporte !"), findsOneWidget);
       await tester.tap(find.byKey(const Key('wheel')));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('result')), findsNothing);
@@ -479,7 +501,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
       expect(find.byKey(const Key('spin')), findsOneWidget);
-      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(find.text('Éliminé'), findsNothing);
       expect(store.saved!.selected.eliminated, isEmpty);
     });
 
@@ -513,7 +535,7 @@ void main() {
         store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0, 2}),
       );
       expect(wheelChoices(tester), ['Sushi']);
-      expect(find.text('Il ne reste que « Sushi » !'), findsOneWidget);
+      expect(find.text("« Sushi » l'emporte !"), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('restore2')));
       await tester.pumpAndSettle();
@@ -550,7 +572,7 @@ void main() {
         store: storeWith(['Pizza', 'Sushi', 'Burger'], eliminated: {0}),
       );
       expect(wheelChoices(tester), ['Pizza', 'Sushi', 'Burger']);
-      expect(find.text('Sorti de la roue'), findsNothing);
+      expect(find.text('Éliminé'), findsNothing);
       expect(find.byKey(const Key('restoreAll')), findsNothing);
       await spin(tester);
       expect(find.byKey(const Key('eliminationNote')), findsNothing);

@@ -14,7 +14,7 @@
   "weightedChoices": "Donner un poids aux choix",
   "weightedChoicesHint": "Un choix plus lourd a une plus grande part de la roue et plus de chances de sortir.",
   "elimination": "Mode élimination",
-  "eliminationHint": "Le choix tiré sort de la roue pour les tirages suivants, jusqu'à ce que tu le remettes.",
+  "eliminationHint": "Chaque tirage élimine le choix tiré, et le dernier qui reste l'emporte.",
   "confirmElimination": "Demander avant de retirer",
   "confirmEliminationHint": "Après chaque tirage, tu choisis de garder le choix ou de le sortir de la roue.",
   "soundsSection": "Sons",
@@ -39,11 +39,14 @@
   "delete": "Supprimer",
   "deleteList": "Supprimer la liste",
   "resultTitle": "Le sort a choisi",
+  "eliminatedTitle": "Éliminé",
+  "eliminateQuestion": "Éliminer ce choix ?",
   "eliminationAsk": "Le sortir de la roue pour les prochains tirages ?",
   "eliminationNote": "Il sort de la roue pour les prochains tirages.",
   "keepChoice": "Le garder",
-  "eliminateChoice": "Le sortir",
+  "eliminateChoice": "L'éliminer",
   "great": "Super !",
+  "next": "Continuer",
   "clearAll": "Tout effacer",
   "switchList": "Changer de liste",
   "choiceCount": "{count, plural, =0{Aucun choix} =1{1 choix} other{{count} choix}}",
@@ -55,8 +58,8 @@
     }
   },
   "allChoicesOut": "Tous les choix sont sortis.",
-  "onlyChoiceLeft": "Il ne reste que « {choice} » !",
-  "@onlyChoiceLeft": {
+  "lastChoiceWins": "« {choice} » l'emporte !",
+  "@lastChoiceWins": {
     "placeholders": {
       "choice": {
         "type": "String"
@@ -70,7 +73,7 @@
   "moreLikely": "Plus de chances",
   "newChoice": "Nouveau choix",
   "add": "Ajouter",
-  "eliminatedCount": "{count, plural, =1{1 choix sorti} other{{count} choix sortis}}",
+  "eliminatedCount": "{count, plural, =1{1 choix éliminé} other{{count} choix éliminés}}",
   "@eliminatedCount": {
     "placeholders": {
       "count": {
@@ -80,7 +83,7 @@
   },
   "restoreAll": "Tout remettre",
   "noChoicesYet": "Aucun choix pour le moment.",
-  "eliminated": "Sorti de la roue",
+  "eliminated": "Éliminé",
   "restore": "Remettre dans la roue",
   "remove": "Retirer",
   "percent": "{value} %",

@@ -187,7 +187,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminationHint.
   ///
   /// In fr, this message translates to:
-  /// **'Le choix tiré sort de la roue pour les tirages suivants, jusqu\'à ce que tu le remettes.'**
+  /// **'Chaque tirage élimine le choix tiré, et le dernier qui reste l\'emporte.'**
   String get eliminationHint;
 
   /// No description provided for @confirmElimination.
@@ -292,6 +292,18 @@ abstract class AppLocalizations {
   /// **'Le sort a choisi'**
   String get resultTitle;
 
+  /// No description provided for @eliminatedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Éliminé'**
+  String get eliminatedTitle;
+
+  /// No description provided for @eliminateQuestion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Éliminer ce choix ?'**
+  String get eliminateQuestion;
+
   /// No description provided for @eliminationAsk.
   ///
   /// In fr, this message translates to:
@@ -313,7 +325,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminateChoice.
   ///
   /// In fr, this message translates to:
-  /// **'Le sortir'**
+  /// **'L\'éliminer'**
   String get eliminateChoice;
 
   /// No description provided for @great.
@@ -321,6 +333,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Super !'**
   String get great;
+
+  /// No description provided for @next.
+  ///
+  /// In fr, this message translates to:
+  /// **'Continuer'**
+  String get next;
 
   /// No description provided for @clearAll.
   ///
@@ -346,11 +364,11 @@ abstract class AppLocalizations {
   /// **'Tous les choix sont sortis.'**
   String get allChoicesOut;
 
-  /// No description provided for @onlyChoiceLeft.
+  /// No description provided for @lastChoiceWins.
   ///
   /// In fr, this message translates to:
-  /// **'Il ne reste que « {choice} » !'**
-  String onlyChoiceLeft(String choice);
+  /// **'« {choice} » l\'emporte !'**
+  String lastChoiceWins(String choice);
 
   /// No description provided for @restoreAllWheel.
   ///
@@ -397,7 +415,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminatedCount.
   ///
   /// In fr, this message translates to:
-  /// **'{count, plural, =1{1 choix sorti} other{{count} choix sortis}}'**
+  /// **'{count, plural, =1{1 choix éliminé} other{{count} choix éliminés}}'**
   String eliminatedCount(int count);
 
   /// No description provided for @restoreAll.
@@ -415,7 +433,7 @@ abstract class AppLocalizations {
   /// No description provided for @eliminated.
   ///
   /// In fr, this message translates to:
-  /// **'Sorti de la roue'**
+  /// **'Éliminé'**
   String get eliminated;
 
   /// No description provided for @restore.
