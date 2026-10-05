@@ -23,7 +23,7 @@ void main() {
           )
           .first,
     );
-    final hub = tester.getRect(find.byIcon(Icons.auto_awesome));
+    final hub = tester.getRect(find.byKey(SpinningWheel.hubKey));
     expect(hub.center, wheel.center);
   });
 }

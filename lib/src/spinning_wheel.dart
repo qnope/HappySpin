@@ -33,6 +33,9 @@ class SpinningWheel extends StatelessWidget {
   /// Angle of the pointer when fully bent by a peg.
   static const double maxPointerAngle = 0.5;
 
+  /// Identifies the hub at the center of the wheel.
+  static const Key hubKey = ValueKey('wheelHub');
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -81,17 +84,17 @@ class SpinningWheel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 18),
             child: Center(
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  shape: BoxShape.circle,
-                  boxShadow: const [
-                    BoxShadow(blurRadius: 6, color: Colors.black26),
-                  ],
+              // The hub turns with the wheel, like the axle holding it.
+              child: Transform.rotate(
+                angle: rotation,
+                child: CustomPaint(
+                  key: hubKey,
+                  size: const Size.square(52),
+                  painter: _HubPainter(
+                    color: palette.pointerColor,
+                    collar: scheme.surface,
+                  ),
                 ),
-                child: Icon(Icons.auto_awesome, color: scheme.primary),
               ),
             ),
           ),
@@ -316,4 +319,101 @@ class _PointerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_PointerPainter old) =>
       old.color != color || old.outline != outline;
+}
+
+/// The axle cap in the middle of the wheel: a domed cap in the pointer's
+/// color, ringed with rivets, around a polished screw.
+class _HubPainter extends CustomPainter {
+  _HubPainter({required this.color, required this.collar});
+
+  final Color color;
+  final Color collar;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2;
+
+    // A collar the color of the rim, so the cap stands out on any segment.
+    final outer = Path()
+      ..addOval(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawShadow(outer, Colors.black, 4, false);
+    canvas.drawCircle(center, radius, Paint()..color = collar);
+
+    // The domed cap, lit from the top left like the pointer.
+    final cap = radius * 0.8;
+    final capRect = Rect.fromCircle(center: center, radius: cap);
+    canvas.drawCircle(
+      center,
+      cap,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.35, -0.35),
+          radius: 1.1,
+          colors: [
+            Color.lerp(color, Colors.white, 0.45)!,
+            color,
+            Color.lerp(color, Colors.black, 0.35)!,
+          ],
+          stops: const [0, 0.5, 1],
+        ).createShader(capRect),
+    );
+    canvas.drawCircle(
+      center,
+      cap,
+      Paint()
+        ..color = Color.lerp(color, Colors.black, 0.4)!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+
+    // Six rivets around the screw, which show the hub turning.
+    const rivets = 6;
+    for (var i = 0; i < rivets; i++) {
+      final angle = i * 2 * math.pi / rivets - math.pi / 2;
+      final at = center + Offset(math.cos(angle), math.sin(angle)) * cap * 0.68;
+      _paintMetal(canvas, at, radius * 0.09);
+    }
+
+    // The polished screw on the axle, with its slot.
+    final screw = radius * 0.3;
+    _paintMetal(canvas, center, screw);
+    canvas.drawLine(
+      center + Offset(-screw * 0.6, 0),
+      center + Offset(screw * 0.6, 0),
+      Paint()
+        ..color = Colors.black45
+        ..strokeWidth = screw * 0.28
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  void _paintMetal(Canvas canvas, Offset at, double r) {
+    canvas.drawCircle(
+      at,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.4, -0.4),
+          colors: [
+            Colors.white,
+            const Color(0xFFD7D7D7),
+            const Color(0xFF8A8A8A),
+          ],
+          stops: const [0, 0.55, 1],
+        ).createShader(Rect.fromCircle(center: at, radius: r)),
+    );
+    canvas.drawCircle(
+      at,
+      r,
+      Paint()
+        ..color = Colors.black38
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HubPainter old) =>
+      old.color != color || old.collar != collar;
 }
