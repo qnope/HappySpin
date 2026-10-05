@@ -15,17 +15,25 @@ class PlatformWheelSounds implements WheelSounds {
   var _next = 0;
   AudioPlayer? _chime;
 
+  /// Mixes with the user's music rather than pausing it. On iPhone this
+  /// takes the playback category, which plays even in silent mode: iOS
+  /// refuses to mix the ambient one, and would then play the sounds with
+  /// its default category, which follows the silent switch and pauses the
+  /// music. Sounds can be turned off in the settings instead.
+  @visibleForTesting
+  static AudioContext audioContext() => AudioContext(
+    android: AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers)
+        .buildAndroid(),
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {AVAudioSessionOptions.mixWithOthers},
+    ),
+  );
+
   @override
   Future<void> load() async {
     try {
-      // Mix with the user's music rather than pausing it, and stay quiet
-      // when an iPhone is switched to silent.
-      await AudioPlayer.global.setAudioContext(
-        AudioContextConfig(
-          focus: AudioContextConfigFocus.mixWithOthers,
-          respectSilence: defaultTargetPlatform == TargetPlatform.iOS,
-        ).build(),
-      );
+      await AudioPlayer.global.setAudioContext(audioContext());
     } on Object {
       // Not every platform lets the audio context be changed.
     }
