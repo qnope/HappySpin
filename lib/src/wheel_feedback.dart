@@ -2,7 +2,8 @@ import 'wheel_haptics.dart';
 import 'wheel_sounds.dart';
 
 /// What the wheel makes the user hear and feel: a tick each time a peg goes
-/// past the pointer, and a chime with a stronger buzz when it stops.
+/// past the pointer, a stronger buzz when it stops, and a chime when a
+/// choice wins.
 abstract class WheelFeedback {
   /// Gets the sounds ready, so that the first tick is not late. Called from
   /// the tap that spins the wheel, when browsers allow sound to start.
@@ -11,8 +12,13 @@ abstract class WheelFeedback {
   /// A peg went past the pointer while the wheel turned at [speed] rad/s.
   void tick(double speed);
 
-  /// The wheel stopped on a choice.
-  void stop();
+  /// The wheel stopped on a choice; [celebrate] is false when the choice
+  /// is only eliminated, which deserves no chime.
+  void stop({bool celebrate = true});
+
+  /// A choice won without the wheel stopping on it: the last one left in
+  /// elimination mode.
+  void celebrate();
 }
 
 /// Plays the wheel's sounds and vibrates the device.
@@ -44,7 +50,13 @@ class DeviceWheelFeedback implements WheelFeedback {
   }
 
   @override
-  void stop() {
+  void stop({bool celebrate = true}) {
+    _haptics.stop();
+    if (celebrate) _sounds.chime();
+  }
+
+  @override
+  void celebrate() {
     _haptics.stop();
     _sounds.chime();
   }
@@ -61,5 +73,8 @@ class SilentWheelFeedback implements WheelFeedback {
   void tick(double speed) {}
 
   @override
-  void stop() {}
+  void stop({bool celebrate = true}) {}
+
+  @override
+  void celebrate() {}
 }

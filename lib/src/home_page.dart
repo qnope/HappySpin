@@ -303,45 +303,75 @@ class _HomePageState extends State<HomePage>
     });
     if (done) {
       _ticker.stop();
-      _feedback.stop();
+      _feedback.stop(celebrate: !_eliminating);
       _showResult(_onWheel[physics.selectedIndex]);
     }
   }
 
-  /// Shows the choice at [index] the wheel picked, and in elimination mode
-  /// takes it out of the wheel, right away or if the user says so.
-  Future<void> _showResult(int index) async {
-    final winner = _choices[index];
-    final eliminating = _eliminating;
-    final confirm =
-        eliminating &&
-        (widget.themeController?.theme.confirmElimination ?? false);
+  /// Shows the choice at [index] the wheel picked: the winner, or in
+  /// elimination mode the choice that comes out of the wheel.
+  Future<void> _showResult(int index) =>
+      _eliminating ? _showElimination(index) : _showWinner(_choices[index]);
+
+  Future<void> _showWinner(String winner) => showDialog<void>(
+    context: context,
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return AlertDialog(
+        icon: const Icon(Icons.celebration, size: 40),
+        title: Text(l10n.resultTitle),
+        content: Text(
+          winner,
+          key: const Key('result'),
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.great),
+          ),
+        ],
+      );
+    },
+  );
+
+  /// Takes the choice at [index] out of the wheel, right away or if the user
+  /// says so. Once a single choice is left, it wins like a normal pick.
+  Future<void> _showElimination(int index) async {
+    final loser = _choices[index];
+    final confirm = widget.themeController?.theme.confirmElimination ?? false;
     final eliminate = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final text = Theme.of(context).textTheme;
+        final theme = Theme.of(context);
         final l10n = AppLocalizations.of(context);
         return AlertDialog(
-          icon: const Icon(Icons.celebration, size: 40),
-          title: Text(l10n.resultTitle),
+          icon: Icon(
+            Icons.remove_circle_outline,
+            size: 40,
+            color: theme.colorScheme.outline,
+          ),
+          title: Text(confirm ? l10n.eliminateQuestion : l10n.eliminatedTitle),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                winner,
+                loser,
                 key: const Key('result'),
                 textAlign: TextAlign.center,
-                style: text.headlineMedium,
-              ),
-              if (eliminating) ...[
-                const SizedBox(height: 12),
-                Text(
-                  confirm ? l10n.eliminationAsk : l10n.eliminationNote,
-                  key: const Key('eliminationNote'),
-                  textAlign: TextAlign.center,
-                  style: text.bodyMedium,
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                  decoration: confirm ? null : TextDecoration.lineThrough,
                 ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                confirm ? l10n.eliminationAsk : l10n.eliminationNote,
+                key: const Key('eliminationNote'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
             ],
           ),
           actions: [
@@ -358,16 +388,22 @@ class _HomePageState extends State<HomePage>
               ),
             ] else
               TextButton(
+                key: const Key('next'),
                 onPressed: () => Navigator.of(context).pop(true),
-                child: Text(l10n.great),
+                child: Text(l10n.next),
               ),
           ],
         );
       },
     );
     // Without confirmation, the choice comes out however the dialog closes.
-    if (!mounted || !eliminating || (confirm && eliminate != true)) return;
+    if (!mounted || (confirm && eliminate != true)) return;
     _eliminate(index);
+    final left = _lists!.selected.remaining;
+    if (left.length == 1) {
+      _feedback.celebrate();
+      await _showWinner(_choices[left.single]);
+    }
   }
 
   @override
@@ -536,7 +572,7 @@ class _HomePageState extends State<HomePage>
             Text(
               onWheel.isEmpty
                   ? l10n.allChoicesOut
-                  : l10n.onlyChoiceLeft(_choices[onWheel.single]),
+                  : l10n.lastChoiceWins(_choices[onWheel.single]),
               key: const Key('lastChoice'),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium,

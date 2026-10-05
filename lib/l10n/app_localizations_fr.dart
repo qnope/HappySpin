@@ -54,7 +54,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eliminationHint =>
-      'Le choix tiré sort de la roue pour les tirages suivants, jusqu\'à ce que tu le remettes.';
+      'Chaque tirage élimine le choix tiré, et le dernier qui reste l\'emporte.';
 
   @override
   String get confirmElimination => 'Demander avant de retirer';
@@ -112,6 +112,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultTitle => 'Le sort a choisi';
 
   @override
+  String get eliminatedTitle => 'Éliminé';
+
+  @override
+  String get eliminateQuestion => 'Éliminer ce choix ?';
+
+  @override
   String get eliminationAsk =>
       'Le sortir de la roue pour les prochains tirages ?';
 
@@ -123,10 +129,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get keepChoice => 'Le garder';
 
   @override
-  String get eliminateChoice => 'Le sortir';
+  String get eliminateChoice => 'L\'éliminer';
 
   @override
   String get great => 'Super !';
+
+  @override
+  String get next => 'Continuer';
 
   @override
   String get clearAll => 'Tout effacer';
@@ -150,8 +159,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get allChoicesOut => 'Tous les choix sont sortis.';
 
   @override
-  String onlyChoiceLeft(String choice) {
-    return 'Il ne reste que « $choice » !';
+  String lastChoiceWins(String choice) {
+    return '« $choice » l\'emporte !';
   }
 
   @override

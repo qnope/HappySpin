@@ -54,7 +54,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get eliminationHint =>
-      'La opción elegida sale de la ruleta en los siguientes giros, hasta que la vuelvas a poner.';
+      'Cada giro elimina la opción elegida, y la última que queda gana.';
 
   @override
   String get confirmElimination => 'Preguntar antes de quitar';
@@ -112,6 +112,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resultTitle => 'La suerte ha elegido';
 
   @override
+  String get eliminatedTitle => 'Eliminada';
+
+  @override
+  String get eliminateQuestion => '¿Eliminar esta opción?';
+
+  @override
   String get eliminationAsk => '¿Sacarla de la ruleta para los próximos giros?';
 
   @override
@@ -121,10 +127,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get keepChoice => 'Mantenerla';
 
   @override
-  String get eliminateChoice => 'Sacarla';
+  String get eliminateChoice => 'Eliminarla';
 
   @override
   String get great => '¡Genial!';
+
+  @override
+  String get next => 'Continuar';
 
   @override
   String get clearAll => 'Borrar todo';
@@ -148,8 +157,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get allChoicesOut => 'Todas las opciones han salido.';
 
   @override
-  String onlyChoiceLeft(String choice) {
-    return '¡Solo queda «$choice»!';
+  String lastChoiceWins(String choice) {
+    return '¡«$choice» gana!';
   }
 
   @override

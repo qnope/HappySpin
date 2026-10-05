@@ -54,7 +54,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eliminationHint =>
-      'The picked choice leaves the wheel for the next spins, until you put it back.';
+      'Each spin eliminates the picked choice, and the last one left wins.';
 
   @override
   String get confirmElimination => 'Ask before removing';
@@ -112,6 +112,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultTitle => 'Fate has chosen';
 
   @override
+  String get eliminatedTitle => 'Eliminated';
+
+  @override
+  String get eliminateQuestion => 'Eliminate this choice?';
+
+  @override
   String get eliminationAsk => 'Take it off the wheel for the next spins?';
 
   @override
@@ -121,10 +127,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keepChoice => 'Keep it';
 
   @override
-  String get eliminateChoice => 'Take it off';
+  String get eliminateChoice => 'Eliminate it';
 
   @override
   String get great => 'Great!';
+
+  @override
+  String get next => 'Continue';
 
   @override
   String get clearAll => 'Clear all';
@@ -148,8 +157,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get allChoicesOut => 'All the choices are out.';
 
   @override
-  String onlyChoiceLeft(String choice) {
-    return 'Only “$choice” is left!';
+  String lastChoiceWins(String choice) {
+    return '“$choice” wins!';
   }
 
   @override
