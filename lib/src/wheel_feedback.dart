@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'wheel_haptics.dart';
 import 'wheel_sounds.dart';
 
@@ -37,8 +39,10 @@ class DeviceWheelFeedback implements WheelFeedback {
     _load();
   }
 
-  void _load() => _loading ??= _sounds.load().catchError((Object _) {
-    // Without sound, the wheel still vibrates.
+  void _load() => _loading ??= _sounds.load().catchError((Object error) {
+    // Without sound, the wheel still vibrates; the next spin tries again.
+    debugPrint('HappySpin: sounds not loaded: $error');
+    _loading = null;
   });
 
   @override
