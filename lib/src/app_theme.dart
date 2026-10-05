@@ -340,6 +340,9 @@ class ThemeSheet extends StatelessWidget {
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    // Keeps the sheet, and its drag handle, below the status bar and the
+    // notch or Dynamic Island when the settings fill the screen.
+    useSafeArea: true,
     builder: (context) => ThemeSheet(controller: controller),
   );
 
@@ -357,8 +360,21 @@ class ThemeSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(l10n.settings, style: text.titleLarge),
-                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(l10n.settings, style: text.titleLarge),
+                    ),
+                    IconButton(
+                      key: const Key('closeSettings'),
+                      icon: const Icon(Icons.close),
+                      tooltip: MaterialLocalizations.of(context)
+                          .closeButtonTooltip,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(l10n.appearance, style: text.titleSmall),
                 const SizedBox(height: 8),
                 SegmentedButton<ThemeMode>(

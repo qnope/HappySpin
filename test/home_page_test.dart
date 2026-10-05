@@ -389,6 +389,41 @@ void main() {
     expect(tester.widget<Text>(find.byKey(const Key('weight0'))).data, '×3');
   });
 
+  testWidgets('the settings stay below the notch and close with a button', (
+    tester,
+  ) async {
+    // An iPhone with a Dynamic Island: 59 px of status bar at the top.
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    addTearDown(tester.view.reset);
+    final settings = AppThemeController(store: MemoryAppThemeStore());
+    addTearDown(settings.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('fr'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: HomePage(
+          random: math.Random(1),
+          store: MemoryChoiceListStore(),
+          themeController: settings,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('themeButton')));
+    await tester.pumpAndSettle();
+    final close = find.byKey(const Key('closeSettings'));
+    expect(tester.getTopLeft(find.byType(ThemeSheet)).dy, greaterThan(59));
+    expect(tester.getTopLeft(close).dy, greaterThanOrEqualTo(59));
+
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(find.byType(ThemeSheet), findsNothing);
+  });
+
   testWidgets('sounds can be turned off in the settings', (tester) async {
     final settings = AppThemeController(store: MemoryAppThemeStore());
     addTearDown(settings.dispose);
