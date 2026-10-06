@@ -424,6 +424,38 @@ void main() {
     expect(find.byType(ThemeSheet), findsNothing);
   });
 
+  testWidgets('the keyboard covers the page without shrinking the wheel', (
+    tester,
+  ) async {
+    // An iPhone 15: the keyboard takes 336 px and hides the home indicator.
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    tester.view.viewPadding = tester.view.padding;
+    addTearDown(tester.view.reset);
+    await pump(tester);
+    final wheel = find.byType(SpinningWheel);
+    final input = find.byKey(const Key('choiceInput'));
+    final size = tester.getSize(wheel);
+
+    await tester.tap(input);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 336 * 3);
+    tester.view.padding = const FakeViewPadding(top: 59 * 3);
+    await tester.pumpAndSettle();
+
+    // The spin button makes way for the field, right under the whole wheel.
+    expect(tester.getSize(wheel), size);
+    expect(find.byKey(const Key('spin')), findsNothing);
+    expect(tester.getTopLeft(wheel).dy, greaterThan(59 + kToolbarHeight));
+    expect(tester.getBottomLeft(input).dy, lessThanOrEqualTo(852 - 336));
+
+    tester.view.resetViewInsets();
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(wheel), size);
+    expect(find.byKey(const Key('spin')), findsOneWidget);
+  });
+
   testWidgets('sounds can be turned off in the settings', (tester) async {
     final settings = AppThemeController(store: MemoryAppThemeStore());
     addTearDown(settings.dispose);

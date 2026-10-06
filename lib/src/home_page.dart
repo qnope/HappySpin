@@ -421,8 +421,13 @@ class _HomePageState extends State<HomePage>
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final l10n = AppLocalizations.of(context);
+    // Read here: the Scaffold hides the keyboard from its body.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     return Scaffold(
       appBar: AppBar(
+        // Tinted when the list of choices scrolls, not the page behind it.
+        notificationPredicate: (notification) => notification.depth == 1,
         title: _buildListMenu(),
         centerTitle: true,
         actions: [
@@ -441,24 +446,50 @@ class _HomePageState extends State<HomePage>
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 720;
-            final wheel = _buildWheel();
+            // The keyboard slides over the page instead of shrinking the
+            // wheel: the page keeps its full height and scrolls if needed to
+            // show the field being typed in.
+            final height = constraints.maxHeight + keyboard;
             final editor = _buildEditor();
+            final Widget page;
             if (wide) {
-              return Row(
+              page = Row(
                 children: [
-                  Expanded(child: wheel),
+                  Expanded(child: _buildWheel()),
                   SizedBox(width: 380, child: editor),
                 ],
               );
+            } else {
+              // While typing on a phone, the spin button makes way for the
+              // field, which moves up under the wheel, above the keyboard.
+              final typing = keyboard > 0 && !_exhausted;
+              final wheelHeight = (height - bottomInset) * 5 / 9;
+              page = Column(
+                children: [
+                  SizedBox(
+                    height: typing ? wheelHeight - _spinRowHeight : wheelHeight,
+                    child: _buildWheel(spinButton: !typing),
+                  ),
+                  Expanded(child: editor),
+                ],
+              );
             }
-            return Column(
-              children: [
-                Flexible(flex: 5, child: wheel),
-                Expanded(flex: 4, child: editor),
-              ],
+            return SingleChildScrollView(
+              key: const Key('page'),
+              physics: keyboard > 0
+                  ? const ClampingScrollPhysics()
+                  : const NeverScrollableScrollPhysics(),
+              child: SizedBox(
+                height: height,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: bottomInset),
+                  child: page,
+                ),
+              ),
             );
           },
         ),
@@ -534,17 +565,23 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildWheel() {
+  /// Whether, in elimination mode, too few choices are left to spin.
+  bool get _exhausted =>
+      _eliminating &&
+      _lists!.selected.eliminated.isNotEmpty &&
+      _onWheel.length < 2;
+
+  /// Height of the spin button and the gap above it.
+  static const _spinRowHeight = 16.0 + 52;
+
+  Widget _buildWheel({bool spinButton = true}) {
     final palette = WheelTheme.of(context);
     final l10n = AppLocalizations.of(context);
     final onWheel = _onWheel;
     final canSpin = !_spinning && onWheel.length >= 2;
     // In elimination mode, once too few choices are left to spin, the wheel
     // says so and offers to put the others back.
-    final exhausted =
-        _eliminating &&
-        _lists!.selected.eliminated.isNotEmpty &&
-        onWheel.length < 2;
+    final exhausted = _exhausted;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -566,7 +603,7 @@ class _HomePageState extends State<HomePage>
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          if (exhausted || spinButton) const SizedBox(height: 16),
           if (exhausted) ...[
             Text(
               onWheel.isEmpty
@@ -587,7 +624,7 @@ class _HomePageState extends State<HomePage>
                 textStyle: const TextStyle(fontSize: 18),
               ),
             ),
-          ] else
+          ] else if (spinButton)
             FilledButton.icon(
               key: const Key('spin'),
               onPressed: canSpin ? _spinWheel : null,
