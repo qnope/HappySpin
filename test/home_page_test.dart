@@ -180,6 +180,43 @@ void main() {
     expect(store.saved!.selected.colorOf(2), isNull);
   });
 
+  testWidgets('any color can be picked exactly', (tester) async {
+    final store = await pump(tester);
+    await tester.tap(find.byKey(const Key('color1')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('preciseColor')));
+    await tester.tap(find.byKey(const Key('preciseColor')));
+    await tester.pumpAndSettle();
+
+    // The code starts at the choice's color, and follows the sliders.
+    final code = find.byKey(const Key('colorCode'));
+    final start = WheelPalette.festive.segmentColor(1, 4).toARGB32();
+    expect(
+      tester.widget<TextField>(code).controller!.text,
+      (start & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase(),
+    );
+    final hue = find.descendant(
+      of: find.byKey(const Key('hue')),
+      matching: find.byType(Slider),
+    );
+    await tester.ensureVisible(hue);
+    await tester.pumpAndSettle();
+    await tester.drag(hue, const Offset(60, 0));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(code).controller!.text,
+      isNot((start & 0xFFFFFF).toRadixString(16).toUpperCase()),
+    );
+
+    await tester.enterText(code, '123abc');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('confirmColor')));
+    await tester.pumpAndSettle();
+    expect(store.saved!.selected.colorOf(1), const Color(0xFF123ABC));
+    final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
+    expect(wheel.colors![1], const Color(0xFF123ABC));
+  });
+
   testWidgets('cancelling the color popup changes nothing', (tester) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('color0')));

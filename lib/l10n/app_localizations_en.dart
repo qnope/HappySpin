@@ -236,4 +236,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get renameChoice => 'Rename choice';
+
+  @override
+  String get preciseColor => 'Pick exact color…';
+
+  @override
+  String get hue => 'Hue';
+
+  @override
+  String get saturation => 'Saturation';
+
+  @override
+  String get lightness => 'Lightness';
+
+  @override
+  String get colorCode => 'Color code';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get ok => 'OK';
 }

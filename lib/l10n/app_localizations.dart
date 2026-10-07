@@ -501,6 +501,48 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Renommer le choix'**
   String get renameChoice;
+
+  /// No description provided for @preciseColor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisir précisément…'**
+  String get preciseColor;
+
+  /// No description provided for @hue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Teinte'**
+  String get hue;
+
+  /// No description provided for @saturation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saturation'**
+  String get saturation;
+
+  /// No description provided for @lightness.
+  ///
+  /// In fr, this message translates to:
+  /// **'Luminosité'**
+  String get lightness;
+
+  /// No description provided for @colorCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'Code couleur'**
+  String get colorCode;
+
+  /// No description provided for @back.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour'**
+  String get back;
+
+  /// No description provided for @ok.
+  ///
+  /// In fr, this message translates to:
+  /// **'OK'**
+  String get ok;
 }
 
 class _AppLocalizationsDelegate
