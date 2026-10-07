@@ -159,15 +159,14 @@ void main() {
     await tester.tap(find.byKey(const Key('color2')));
     await tester.pumpAndSettle();
     expect(find.text('Couleur du choix'), findsOneWidget);
+    // Colors are grouped by palette, the current one first.
+    expect(
+      tester.getTopLeft(find.text('Festif')).dy,
+      lessThan(tester.getTopLeft(find.text('Océan')).dy),
+    );
     // Picks a color of another palette.
     final picked = WheelPalette.ocean.colors.first;
-    final swatch = find.byWidgetPredicate(
-      (w) =>
-          w is Container &&
-          (w.decoration as BoxDecoration?)?.color == picked &&
-          w.constraints?.maxWidth == 40,
-    );
-    await tester.tap(swatch);
+    await tester.tap(find.byKey(const Key('swatch-ocean-0')));
     await tester.pumpAndSettle();
     expect(find.text('Couleur du choix'), findsNothing);
     expect(wheelColor(), picked);
