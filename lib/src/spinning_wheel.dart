@@ -146,14 +146,8 @@ class _WheelPainter extends CustomPainter {
       for (var i = 0; i < choices.length; i++) {
         final start = -math.pi / 2 + layout.start(i);
         final seg = layout.sweep(i);
-        canvas.drawArc(
-          rect,
-          start,
-          seg,
-          true,
-          Paint()
-            ..color = colors?[i] ?? palette.segmentColor(i, choices.length),
-        );
+        final color = colors?[i] ?? palette.segmentColor(i, choices.length);
+        canvas.drawArc(rect, start, seg, true, Paint()..color = color);
         if (choices.length > 1) {
           canvas.drawArc(
             rect,
@@ -166,7 +160,15 @@ class _WheelPainter extends CustomPainter {
               ..strokeWidth = 2,
           );
         }
-        _paintLabel(canvas, center, radius, start + seg / 2, seg, choices[i]);
+        _paintLabel(
+          canvas,
+          center,
+          radius,
+          start + seg / 2,
+          seg,
+          choices[i],
+          _labelColor(color),
+        );
       }
     }
 
@@ -211,6 +213,15 @@ class _WheelPainter extends CustomPainter {
     }
   }
 
+  /// The palette's label color on its own colors; on a color the user
+  /// picked, whichever of white or dark reads best.
+  Color _labelColor(Color segment) {
+    if (palette.colors.contains(segment)) return palette.labelColor;
+    return ThemeData.estimateBrightnessForColor(segment) == Brightness.dark
+        ? Colors.white
+        : const Color(0xFF3D2C3E);
+  }
+
   void _paintLabel(
     Canvas canvas,
     Offset center,
@@ -218,6 +229,7 @@ class _WheelPainter extends CustomPainter {
     double angle,
     double seg,
     String text,
+    Color color,
   ) {
     final maxWidth = radius * 0.56;
     final fontSize = math.min(18.0, math.max(9.0, radius * seg * 0.35));
@@ -225,10 +237,10 @@ class _WheelPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: palette.labelColor,
+          color: color,
           fontSize: fontSize,
           fontWeight: FontWeight.w700,
-          shadows: palette.labelColor == Colors.white
+          shadows: color == Colors.white
               ? const [Shadow(blurRadius: 3, color: Colors.black45)]
               : null,
         ),

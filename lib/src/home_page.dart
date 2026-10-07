@@ -43,6 +43,14 @@ class _HomePageState extends State<HomePage>
   final TextEditingController _input = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
 
+  // The choice whose name is being changed in the list, if any.
+  int? _renaming;
+  final TextEditingController _renameText = TextEditingController();
+  late final FocusNode _renameFocus = FocusNode()
+    ..addListener(() {
+      if (!_renameFocus.hasFocus) _finishRename();
+    });
+
   late final ChoiceListStore _store =
       widget.store ?? PreferencesChoiceListStore();
 
@@ -89,6 +97,12 @@ class _HomePageState extends State<HomePage>
   List<int> get _onWheel => _eliminating
       ? _lists!.selected.remaining
       : [for (var i = 0; i < _choices.length; i++) i];
+
+  /// Color of the choice at [index]: the one the user gave it, or else the
+  /// theme's.
+  Color _colorOf(int index, WheelPalette palette) =>
+      _lists!.selected.colorOf(index) ??
+      palette.segmentColor(index, _choices.length);
 
   List<String> get _wheelChoices => [for (final i in _onWheel) _choices[i]];
 
@@ -235,6 +249,9 @@ class _HomePageState extends State<HomePage>
     _pose.dispose();
     _input.dispose();
     _inputFocus.dispose();
+    _renaming = null;
+    _renameFocus.dispose();
+    _renameText.dispose();
     super.dispose();
   }
 
@@ -248,6 +265,48 @@ class _HomePageState extends State<HomePage>
 
   void _removeChoice(int index) {
     _setSelected(_lists!.selected.withoutChoice(index));
+  }
+
+  /// Lets the user pick another color for the choice at [index], or give it
+  /// back the theme's.
+  Future<void> _pickColor(int index) async {
+    final palette = WheelTheme.of(context);
+    final picked = await showDialog<({Color? color})>(
+      context: context,
+      builder: (context) => _ChoiceColorDialog(
+        current: _colorOf(index, palette),
+        themeColor: palette.segmentColor(index, _choices.length),
+        palette: palette,
+      ),
+    );
+    if (picked == null || !mounted || index >= _choices.length) return;
+    _setSelected(_lists!.selected.withColor(index, picked.color));
+  }
+
+  /// Turns the name of the choice at [index] into a field to change it.
+  void _startRename(int index) {
+    if (_spinning) return;
+    _renameText.value = TextEditingValue(
+      text: _choices[index],
+      selection: TextSelection(
+        baseOffset: 0,
+        extentOffset: _choices[index].length,
+      ),
+    );
+    setState(() => _renaming = index);
+  }
+
+  /// Keeps the new name of the choice being renamed, unless it was left
+  /// empty.
+  void _finishRename() {
+    final index = _renaming;
+    if (index == null || !mounted) return;
+    final name = _renameText.text.trim();
+    setState(() => _renaming = null);
+    if (index >= _choices.length || name.isEmpty || name == _choices[index]) {
+      return;
+    }
+    _setSelected(_lists!.selected.withRenamed(index, name));
   }
 
   void _setWeight(int index, int weight) {
@@ -680,9 +739,7 @@ class _HomePageState extends State<HomePage>
     // choices on every frame of a spin and does not paint them again.
     final choices = _wheelChoices;
     // Choices keep their color when others come out.
-    final colors = [
-      for (final i in onWheel) palette.segmentColor(i, _choices.length),
-    ];
+    final colors = [for (final i in onWheel) _colorOf(i, palette)];
     final weights = _weights;
     return ValueListenableBuilder(
       valueListenable: _pose,
@@ -752,22 +809,65 @@ class _HomePageState extends State<HomePage>
                           _eliminating && _lists!.selected.isEliminated(i);
                       return ListTile(
                         dense: true,
-                        leading: CircleAvatar(
-                          radius: 8,
-                          // Same color as the choice's segment on the wheel.
-                          backgroundColor: eliminated
-                              ? scheme.outlineVariant
-                              : palette.segmentColor(i, _choices.length),
+                        contentPadding: const EdgeInsetsDirectional.only(
+                          start: 4,
+                          end: 16,
                         ),
-                        title: Text(
-                          _choices[i],
-                          style: eliminated
-                              ? TextStyle(
-                                  color: scheme.outline,
-                                  decoration: TextDecoration.lineThrough,
-                                )
-                              : null,
+                        minLeadingWidth: 0,
+                        leading: IconButton(
+                          key: Key('color$i'),
+                          tooltip: l10n.changeColor,
+                          onPressed: _spinning ? null : () => _pickColor(i),
+                          icon: CircleAvatar(
+                            radius: 9,
+                            // Same color as the choice's segment on the wheel.
+                            backgroundColor: eliminated
+                                ? scheme.outlineVariant
+                                : _colorOf(i, palette),
+                          ),
                         ),
+                        title: _renaming == i
+                            ? TextField(
+                                key: const Key('renameInput'),
+                                controller: _renameText,
+                                focusNode: _renameFocus,
+                                autofocus: true,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _renameFocus.unfocus(),
+                                // Touch screens keep the field focused when
+                                // tapping elsewhere unless told otherwise.
+                                onTapOutside: (_) => _renameFocus.unfocus(),
+                                style: Theme.of(context).textTheme.bodyMedium,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: l10n.renameChoice,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                  ),
+                                ),
+                              )
+                            : GestureDetector(
+                                key: Key('choiceName$i'),
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _spinning ? null : () => _startRename(i),
+                                child: Semantics(
+                                  button: true,
+                                  hint: l10n.renameChoice,
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      _choices[i],
+                                      style: eliminated
+                                          ? TextStyle(
+                                              color: scheme.outline,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
                         subtitle: eliminated
                             ? Text(
                                 l10n.eliminated,
@@ -809,6 +909,125 @@ class _HomePageState extends State<HomePage>
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Colors the user can give a choice: the ones of the current palette
+/// first, then those of the other palettes, then a few greys.
+List<Color> _swatches(WheelPalette palette) {
+  final colors = <Color>{
+    ...palette.colors,
+    for (final other in WheelPalette.all) ...other.colors,
+    const Color(0xFF212529),
+    const Color(0xFF6C757D),
+    const Color(0xFFADB5BD),
+  };
+  return [...colors];
+}
+
+/// Asks for a choice's color. Closes with the color picked, with a null
+/// color to give the choice back the theme's, or with nothing if cancelled.
+class _ChoiceColorDialog extends StatelessWidget {
+  const _ChoiceColorDialog({
+    required this.current,
+    required this.themeColor,
+    required this.palette,
+  });
+
+  final Color current;
+
+  /// The color the theme gives the choice.
+  final Color themeColor;
+  final WheelPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final swatches = _swatches(palette);
+    return AlertDialog(
+      title: Text(l10n.choiceColor),
+      content: SizedBox(
+        width: 320,
+        child: SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              for (var i = 0; i < swatches.length; i++)
+                _Swatch(
+                  key: Key('swatch$i'),
+                  color: swatches[i],
+                  selected: swatches[i] == current,
+                  outline: scheme.outline,
+                  onTap: () => Navigator.of(context).pop((color: swatches[i])),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton.icon(
+          key: const Key('restoreDefaultColor'),
+          onPressed: () => Navigator.of(context).pop((color: null)),
+          icon: CircleAvatar(radius: 8, backgroundColor: themeColor),
+          label: Text(l10n.restoreDefaultColor),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+      ],
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    super.key,
+    required this.color,
+    required this.selected,
+    required this.outline,
+    required this.onTap,
+  });
+
+  final Color color;
+  final bool selected;
+  final Color outline;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final light =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.light;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? outline : outline.withValues(alpha: 0.3),
+              width: selected ? 3 : 1,
+            ),
+          ),
+          child: selected
+              ? Icon(
+                  Icons.check,
+                  size: 22,
+                  color: light ? Colors.black87 : Colors.white,
+                )
+              : null,
+        ),
       ),
     );
   }

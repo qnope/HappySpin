@@ -224,4 +224,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get defaultChoices => 'Pizza|Sushi|Burger|Salad';
+
+  @override
+  String get choiceColor => 'Choice color';
+
+  @override
+  String get changeColor => 'Change color';
+
+  @override
+  String get restoreDefaultColor => 'Restore default';
+
+  @override
+  String get renameChoice => 'Rename choice';
 }

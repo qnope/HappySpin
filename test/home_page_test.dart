@@ -109,6 +109,87 @@ void main() {
     expect(find.widgetWithText(ListTile, 'Tacos'), findsNothing);
   });
 
+  testWidgets('tapping a choice\'s name lets the user rename it', (
+    tester,
+  ) async {
+    final store = await pump(tester);
+    await tester.tap(find.byKey(const Key('choiceName1')));
+    await tester.pump();
+    final field = find.byKey(const Key('renameInput'));
+    expect(field, findsOneWidget);
+    expect(tester.widget<TextField>(field).controller!.text, 'Sushi');
+
+    await tester.enterText(field, '  Ramen ');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    expect(field, findsNothing);
+    expect(find.widgetWithText(ListTile, 'Ramen'), findsOneWidget);
+    expect(store.saved!.selected.choices, [
+      'Pizza',
+      'Ramen',
+      'Burger',
+      'Salade',
+    ]);
+    final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
+    expect(wheel.choices, contains('Ramen'));
+  });
+
+  testWidgets('an empty name keeps the old one', (tester) async {
+    final store = await pump(tester);
+    await tester.tap(find.byKey(const Key('choiceName0')));
+    await tester.pump();
+    await tester.enterText(find.byKey(const Key('renameInput')), '   ');
+    // Tapping elsewhere ends the edit too.
+    await tester.tapAt(const Offset(5, 300));
+    await tester.pump();
+    expect(find.byKey(const Key('renameInput')), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Pizza'), findsOneWidget);
+    expect(store.saved, isNull);
+  });
+
+  testWidgets('tapping a choice\'s color forces another one, until restored', (
+    tester,
+  ) async {
+    final store = await pump(tester);
+    const palette = WheelPalette.festive;
+    Color wheelColor() =>
+        tester.widget<SpinningWheel>(find.byType(SpinningWheel)).colors![2];
+    expect(wheelColor(), palette.segmentColor(2, 4));
+
+    await tester.tap(find.byKey(const Key('color2')));
+    await tester.pumpAndSettle();
+    expect(find.text('Couleur du choix'), findsOneWidget);
+    // Picks a color of another palette.
+    final picked = WheelPalette.ocean.colors.first;
+    final swatch = find.byWidgetPredicate(
+      (w) =>
+          w is Container &&
+          (w.decoration as BoxDecoration?)?.color == picked &&
+          w.constraints?.maxWidth == 40,
+    );
+    await tester.tap(swatch);
+    await tester.pumpAndSettle();
+    expect(find.text('Couleur du choix'), findsNothing);
+    expect(wheelColor(), picked);
+    expect(store.saved!.selected.colorOf(2), picked);
+
+    await tester.tap(find.byKey(const Key('color2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restaurer par défaut'));
+    await tester.pumpAndSettle();
+    expect(wheelColor(), palette.segmentColor(2, 4));
+    expect(store.saved!.selected.colorOf(2), isNull);
+  });
+
+  testWidgets('cancelling the color popup changes nothing', (tester) async {
+    final store = await pump(tester);
+    await tester.tap(find.byKey(const Key('color0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
+    expect(store.saved, isNull);
+  });
+
   testWidgets('the wheel ticks on each peg and chimes once it stops', (
     tester,
   ) async {
@@ -454,6 +535,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getSize(wheel), size);
     expect(find.byKey(const Key('spin')), findsOneWidget);
+  });
+
+  testWidgets('a choice being renamed stays above the keyboard', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 59 * 3, bottom: 34 * 3);
+    tester.view.viewPadding = tester.view.padding;
+    addTearDown(tester.view.reset);
+    await pump(tester);
+    final wheel = find.byType(SpinningWheel);
+    final size = tester.getSize(wheel);
+
+    await tester.tap(find.byKey(const Key('choiceName3')));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 336 * 3);
+    tester.view.padding = const FakeViewPadding(top: 59 * 3);
+    await tester.pumpAndSettle();
+
+    final field = find.byKey(const Key('renameInput'));
+    expect(tester.getSize(wheel), size);
+    expect(tester.getBottomLeft(field).dy, lessThanOrEqualTo(852 - 336));
   });
 
   testWidgets('sounds can be turned off in the settings', (tester) async {

@@ -1,3 +1,4 @@
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:happyspin/src/choice_lists.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -78,6 +79,54 @@ void main() {
     expect(list.choices, ['A', 'C']);
     expect(list.weights, [ChoiceList.maxWeight, 4]);
     expect(list.withWeight(1, 0).weights.last, ChoiceList.minWeight);
+  });
+
+  test('saves the color given to each choice', () {
+    final lists = ChoiceLists(
+      lists: [
+        const ChoiceList(
+          name: 'Repas',
+          choices: ['Pizza', 'Sushi'],
+        ).withColor(1, const Color(0xFF6C63FF)),
+      ],
+      current: 0,
+    );
+    final decoded = ChoiceLists.decode(lists.encode());
+    expect(decoded.selected.colors, [null, const Color(0xFF6C63FF)]);
+  });
+
+  test('lists saved before colors take every color from the theme', () {
+    final decoded = ChoiceLists.decode(
+      '{"current":0,"lists":[{"name":"Repas","choices":["Pizza","Sushi"]}]}',
+    );
+    expect(decoded.selected.colors, [null, null]);
+  });
+
+  test('colors follow their choice and can go back to the theme', () {
+    var list = const ChoiceList(name: 'Repas', choices: ['A', 'B'])
+        .withChoice('C')
+        .withColor(0, const Color(0xFF000001))
+        .withColor(2, const Color(0xFF000003));
+    expect(list.colors, [
+      const Color(0xFF000001),
+      null,
+      const Color(0xFF000003),
+    ]);
+    list = list.withoutChoice(1);
+    expect(list.colors, [const Color(0xFF000001), const Color(0xFF000003)]);
+    expect(list.withColor(0, null).colors, [null, const Color(0xFF000003)]);
+  });
+
+  test('renaming a choice keeps its weight, color and elimination', () {
+    final list = const ChoiceList(name: 'Repas', choices: ['A', 'B'])
+        .withWeight(1, 5)
+        .withColor(1, const Color(0xFF000002))
+        .withEliminated(1)
+        .withRenamed(1, 'Bé');
+    expect(list.choices, ['A', 'Bé']);
+    expect(list.weights, [1, 5]);
+    expect(list.colors, [null, const Color(0xFF000002)]);
+    expect(list.eliminated, {1});
   });
 
   group('eliminated choices', () {
