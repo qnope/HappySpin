@@ -12,7 +12,7 @@ Application Flutter pour **iOS**, **Android** et **web**.
 
 - Plusieurs listes de choix : création, changement, renommage et suppression depuis le titre
 - Listes sauvegardées sur l'appareil (stockage local du navigateur sur le web)
-- Ajout et suppression de choix
+- Ajout, renommage et suppression de choix ; couleur de chaque choix au choix (nuancier ou code hexadécimal)
 - Roue colorée qui se redessine à chaque modification
 - Animation de rotation avec décélération, tirage uniforme
 - Affichage du choix gagnant
