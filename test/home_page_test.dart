@@ -109,20 +109,22 @@ void main() {
     expect(find.widgetWithText(ListTile, 'Tacos'), findsNothing);
   });
 
-  testWidgets('tapping a choice\'s name lets the user rename it', (
+  testWidgets('tapping a choice\'s name renames it in the field above', (
     tester,
   ) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('choiceName1')));
     await tester.pump();
-    final field = find.byKey(const Key('renameInput'));
-    expect(field, findsOneWidget);
+    final field = find.byKey(const Key('choiceInput'));
     expect(tester.widget<TextField>(field).controller!.text, 'Sushi');
+    expect(find.text('Renommer « Sushi »'), findsOneWidget);
+    expect(tester.widget<ListTile>(find.byType(ListTile).at(1)).selected, true);
 
     await tester.enterText(field, '  Ramen ');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
-    expect(field, findsNothing);
+    expect(find.text('Nouveau choix'), findsOneWidget);
+    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
     expect(find.widgetWithText(ListTile, 'Ramen'), findsOneWidget);
     expect(store.saved!.selected.choices, [
       'Pizza',
@@ -134,15 +136,24 @@ void main() {
     expect(wheel.choices, contains('Ramen'));
   });
 
-  testWidgets('an empty name keeps the old one', (tester) async {
+  testWidgets('renaming can be cancelled, and an empty name keeps the old', (
+    tester,
+  ) async {
     final store = await pump(tester);
+    final field = find.byKey(const Key('choiceInput'));
     await tester.tap(find.byKey(const Key('choiceName0')));
     await tester.pump();
-    await tester.enterText(find.byKey(const Key('renameInput')), '   ');
-    // Tapping elsewhere ends the edit too.
-    await tester.tapAt(const Offset(5, 300));
+    await tester.enterText(field, 'Tacos');
+    await tester.tap(find.byKey(const Key('cancelRename')));
     await tester.pump();
-    expect(find.byKey(const Key('renameInput')), findsNothing);
+    expect(find.text('Nouveau choix'), findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Pizza'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('choiceName0')));
+    await tester.pump();
+    await tester.enterText(field, '   ');
+    await tester.tap(find.byKey(const Key('confirmRename')));
+    await tester.pump();
     expect(find.widgetWithText(ListTile, 'Pizza'), findsOneWidget);
     expect(store.saved, isNull);
   });
@@ -587,7 +598,8 @@ void main() {
     tester.view.padding = const FakeViewPadding(top: 59 * 3);
     await tester.pumpAndSettle();
 
-    final field = find.byKey(const Key('renameInput'));
+    final field = find.byKey(const Key('choiceInput'));
+    expect(find.text('Renommer « Salade »'), findsOneWidget);
     expect(tester.getSize(wheel), size);
     expect(tester.getBottomLeft(field).dy, lessThanOrEqualTo(852 - 336));
   });

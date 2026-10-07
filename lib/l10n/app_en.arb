@@ -71,5 +71,6 @@
   "saturation": "Saturation",
   "lightness": "Lightness",
   "colorCode": "Color code",
-  "ok": "OK"
+  "ok": "OK",
+  "renameChoiceNamed": "Rename “{name}”"
 }

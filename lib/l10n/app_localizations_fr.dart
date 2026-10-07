@@ -253,4 +253,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get ok => 'OK';
+
+  @override
+  String renameChoiceNamed(String name) {
+    return 'Renommer « $name »';
+  }
 }

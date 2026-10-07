@@ -44,13 +44,9 @@ class _HomePageState extends State<HomePage>
   final TextEditingController _input = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
 
-  // The choice whose name is being changed in the list, if any.
+  // The choice being renamed in the field above the list, if any. The field
+  // stays above the keyboard, where a field in the list would be hidden.
   int? _renaming;
-  final TextEditingController _renameText = TextEditingController();
-  late final FocusNode _renameFocus = FocusNode()
-    ..addListener(() {
-      if (!_renameFocus.hasFocus) _finishRename();
-    });
 
   late final ChoiceListStore _store =
       widget.store ?? PreferencesChoiceListStore();
@@ -145,6 +141,7 @@ class _HomePageState extends State<HomePage>
   }
 
   void _updateLists(List<ChoiceList> lists, int current) {
+    if (current != _lists!.current) _cancelRename();
     final updated = ChoiceLists(lists: lists, current: current);
     setState(() => _lists = updated);
     _store.save(updated).catchError((Object _) {});
@@ -250,13 +247,11 @@ class _HomePageState extends State<HomePage>
     _pose.dispose();
     _input.dispose();
     _inputFocus.dispose();
-    _renaming = null;
-    _renameFocus.dispose();
-    _renameText.dispose();
     super.dispose();
   }
 
   void _addChoice() {
+    if (_renaming != null) return _finishRename();
     final text = _input.text.trim();
     if (text.isEmpty) return;
     _setSelected(_lists!.selected.withChoice(text));
@@ -265,6 +260,7 @@ class _HomePageState extends State<HomePage>
   }
 
   void _removeChoice(int index) {
+    _cancelRename();
     _setSelected(_lists!.selected.withoutChoice(index));
   }
 
@@ -284,10 +280,11 @@ class _HomePageState extends State<HomePage>
     _setSelected(_lists!.selected.withColor(index, picked.color));
   }
 
-  /// Turns the name of the choice at [index] into a field to change it.
+  /// Puts the name of the choice at [index] in the field above the list, to
+  /// change it there.
   void _startRename(int index) {
     if (_spinning) return;
-    _renameText.value = TextEditingValue(
+    _input.value = TextEditingValue(
       text: _choices[index],
       selection: TextSelection(
         baseOffset: 0,
@@ -295,19 +292,28 @@ class _HomePageState extends State<HomePage>
       ),
     );
     setState(() => _renaming = index);
+    _inputFocus.requestFocus();
   }
 
   /// Keeps the new name of the choice being renamed, unless it was left
-  /// empty.
+  /// empty, and gives the field back to new choices.
   void _finishRename() {
     final index = _renaming;
-    if (index == null || !mounted) return;
-    final name = _renameText.text.trim();
-    setState(() => _renaming = null);
+    if (index == null) return;
+    final name = _input.text.trim();
+    _cancelRename();
+    _inputFocus.unfocus();
     if (index >= _choices.length || name.isEmpty || name == _choices[index]) {
       return;
     }
     _setSelected(_lists!.selected.withRenamed(index, name));
+  }
+
+  /// Gives the field back to new choices, leaving the name as it was.
+  void _cancelRename() {
+    if (_renaming == null) return;
+    setState(() => _renaming = null);
+    _input.clear();
   }
 
   void _setWeight(int index, int weight) {
@@ -330,6 +336,7 @@ class _HomePageState extends State<HomePage>
   }
 
   void _clearChoices() {
+    _cancelRename();
     _setSelected(_lists!.selected.copyWith(choices: [], weights: []));
   }
 
@@ -760,6 +767,10 @@ class _HomePageState extends State<HomePage>
     final l10n = AppLocalizations.of(context);
     final onWheel = _onWheel;
     final out = _eliminating ? _lists!.selected.eliminated.length : 0;
+    // The list may have changed under a choice being renamed.
+    final renaming = (_renaming ?? _choices.length) < _choices.length
+        ? _renaming
+        : null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
@@ -772,14 +783,34 @@ class _HomePageState extends State<HomePage>
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _addChoice(),
             decoration: InputDecoration(
-              labelText: l10n.newChoice,
+              labelText: renaming == null
+                  ? l10n.newChoice
+                  : l10n.renameChoiceNamed(_choices[renaming]),
               border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                key: const Key('addChoice'),
-                tooltip: l10n.add,
-                onPressed: _spinning ? null : _addChoice,
-                icon: const Icon(Icons.add_circle),
-              ),
+              prefixIcon: renaming == null
+                  ? null
+                  : IconButton(
+                      key: const Key('cancelRename'),
+                      tooltip: l10n.cancel,
+                      onPressed: () {
+                        _cancelRename();
+                        _inputFocus.unfocus();
+                      },
+                      icon: const Icon(Icons.close),
+                    ),
+              suffixIcon: renaming == null
+                  ? IconButton(
+                      key: const Key('addChoice'),
+                      tooltip: l10n.add,
+                      onPressed: _spinning ? null : _addChoice,
+                      icon: const Icon(Icons.add_circle),
+                    )
+                  : IconButton(
+                      key: const Key('confirmRename'),
+                      tooltip: l10n.rename,
+                      onPressed: _finishRename,
+                      icon: const Icon(Icons.check_circle),
+                    ),
             ),
           ),
           const SizedBox(height: 8),
@@ -827,48 +858,28 @@ class _HomePageState extends State<HomePage>
                                 : _colorOf(i, palette),
                           ),
                         ),
-                        title: _renaming == i
-                            ? TextField(
-                                key: const Key('renameInput'),
-                                controller: _renameText,
-                                focusNode: _renameFocus,
-                                autofocus: true,
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _renameFocus.unfocus(),
-                                // Touch screens keep the field focused when
-                                // tapping elsewhere unless told otherwise.
-                                onTapOutside: (_) => _renameFocus.unfocus(),
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  hintText: l10n.renameChoice,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 6,
-                                  ),
-                                ),
-                              )
-                            : GestureDetector(
-                                key: Key('choiceName$i'),
-                                behavior: HitTestBehavior.opaque,
-                                onTap: _spinning ? null : () => _startRename(i),
-                                child: Semantics(
-                                  button: true,
-                                  hint: l10n.renameChoice,
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    child: Text(
-                                      _choices[i],
-                                      style: eliminated
-                                          ? TextStyle(
-                                              color: scheme.outline,
-                                              decoration:
-                                                  TextDecoration.lineThrough,
-                                            )
-                                          : null,
-                                    ),
-                                  ),
-                                ),
+                        selected: renaming == i,
+                        title: GestureDetector(
+                          key: Key('choiceName$i'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _spinning ? null : () => _startRename(i),
+                          child: Semantics(
+                            button: true,
+                            hint: l10n.renameChoice,
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                _choices[i],
+                                style: eliminated
+                                    ? TextStyle(
+                                        color: scheme.outline,
+                                        decoration: TextDecoration.lineThrough,
+                                      )
+                                    : null,
                               ),
+                            ),
+                          ),
+                        ),
                         subtitle: eliminated
                             ? Text(
                                 l10n.eliminated,

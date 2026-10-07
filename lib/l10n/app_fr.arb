@@ -109,5 +109,13 @@
   "saturation": "Saturation",
   "lightness": "Luminosité",
   "colorCode": "Code couleur",
-  "ok": "OK"
+  "ok": "OK",
+  "renameChoiceNamed": "Renommer « {name} »",
+  "@renameChoiceNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }
