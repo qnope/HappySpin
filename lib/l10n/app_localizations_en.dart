@@ -238,9 +238,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameChoice => 'Rename choice';
 
   @override
-  String get preciseColor => 'Pick exact color…';
-
-  @override
   String get hue => 'Hue';
 
   @override
@@ -251,9 +248,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get colorCode => 'Color code';
-
-  @override
-  String get back => 'Back';
 
   @override
   String get ok => 'OK';

@@ -915,9 +915,9 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-/// Asks for a choice's color, among the palettes' or exactly with sliders
-/// and a color code. Closes with the color picked, with a null color to give
-/// the choice back the theme's, or with nothing if cancelled.
+/// Asks for a choice's color, with sliders over every color, shortcuts to
+/// the palette's, and a color code. Closes with the color picked, with a null
+/// color to give the choice back the theme's, or with nothing if dismissed.
 class _ChoiceColorDialog extends StatefulWidget {
   const _ChoiceColorDialog({
     required this.current,
@@ -936,8 +936,6 @@ class _ChoiceColorDialog extends StatefulWidget {
 }
 
 class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
-  // Whether the sliders show instead of the palettes.
-  bool _precise = false;
   late HSLColor _color = HSLColor.fromColor(widget.current);
   late final TextEditingController _code = TextEditingController(
     text: _hex(widget.current),
@@ -955,7 +953,7 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
       .padLeft(6, '0')
       .toUpperCase();
 
-  void _slide(HSLColor color) {
+  void _set(HSLColor color) {
     setState(() => _color = color);
     _code.text = _hex(color.toColor());
   }
@@ -970,158 +968,112 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final color = _color;
+    final picked = color.toColor();
+    final pure = HSLColor.fromAHSL(1, color.hue, 1, 0.5).toColor();
     return AlertDialog(
       title: Text(l10n.choiceColor),
       content: SizedBox(
         width: 320,
         child: SingleChildScrollView(
-          child: _precise ? _buildSliders(l10n) : _buildPalettes(l10n),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                key: const Key('colorPreview'),
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: picked,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 150,
+                child: TextField(
+                  key: const Key('colorCode'),
+                  controller: _code,
+                  onChanged: _typeCode,
+                  maxLength: 6,
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp('[0-9a-fA-F]')),
+                  ],
+                  decoration: InputDecoration(
+                    isDense: true,
+                    labelText: l10n.colorCode,
+                    prefixText: '#',
+                    counterText: '',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              _ColorSlider(
+                key: const Key('hue'),
+                label: l10n.hue,
+                value: color.hue,
+                max: 360,
+                colors: [
+                  for (var hue = 0; hue <= 360; hue += 60)
+                    HSLColor.fromAHSL(1, hue.toDouble(), 1, 0.5).toColor(),
+                ],
+                onChanged: (hue) => _set(color.withHue(hue)),
+              ),
+              _ColorSlider(
+                key: const Key('saturation'),
+                label: l10n.saturation,
+                value: color.saturation,
+                colors: [
+                  color.withSaturation(0).toColor(),
+                  color.withSaturation(1).toColor(),
+                ],
+                onChanged: (saturation) =>
+                    _set(color.withSaturation(saturation)),
+              ),
+              _ColorSlider(
+                key: const Key('lightness'),
+                label: l10n.lightness,
+                value: color.lightness,
+                colors: [Colors.black, pure, Colors.white],
+                onChanged: (lightness) => _set(color.withLightness(lightness)),
+              ),
+              const SizedBox(height: 8),
+              // Shortcuts to the colors of the theme.
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (var i = 0; i < widget.palette.colors.length; i++)
+                    _Swatch(
+                      key: Key('swatch$i'),
+                      color: widget.palette.colors[i],
+                      selected: widget.palette.colors[i] == picked,
+                      outline: scheme.outline,
+                      onTap: () =>
+                          _set(HSLColor.fromColor(widget.palette.colors[i])),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: _precise
-          ? [
-              TextButton(
-                onPressed: () => setState(() => _precise = false),
-                child: Text(l10n.back),
-              ),
-              FilledButton(
-                key: const Key('confirmColor'),
-                onPressed: () =>
-                    Navigator.of(context).pop((color: _color.toColor())),
-                child: Text(l10n.ok),
-              ),
-            ]
-          : [
-              TextButton.icon(
-                key: const Key('restoreDefaultColor'),
-                onPressed: () => Navigator.of(context).pop((color: null)),
-                icon: CircleAvatar(
-                  radius: 8,
-                  backgroundColor: widget.themeColor,
-                ),
-                label: Text(l10n.restoreDefaultColor),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
-              ),
-            ],
-    );
-  }
-
-  Widget _buildPalettes(AppLocalizations l10n) {
-    final outline = Theme.of(context).colorScheme.outline;
-    final palette = widget.palette;
-    // The current palette first, then the others, each under its name.
-    final palettes = [palette, ...WheelPalette.all.where((p) => p != palette)];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final p in palettes) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 6),
-            child: Text(
-              p.name(l10n),
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-          ),
-          Wrap(
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              for (var i = 0; i < p.colors.length; i++)
-                _Swatch(
-                  key: Key('swatch-${p.id}-$i'),
-                  color: p.colors[i],
-                  selected: p.colors[i] == widget.current,
-                  outline: outline,
-                  onTap: () => Navigator.of(context).pop((color: p.colors[i])),
-                ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        Center(
-          child: OutlinedButton.icon(
-            key: const Key('preciseColor'),
-            onPressed: () => setState(() => _precise = true),
-            icon: const Icon(Icons.tune),
-            label: Text(l10n.preciseColor),
-          ),
+      actions: [
+        TextButton.icon(
+          key: const Key('restoreDefaultColor'),
+          onPressed: () => Navigator.of(context).pop((color: null)),
+          icon: CircleAvatar(radius: 8, backgroundColor: widget.themeColor),
+          label: Text(l10n.restoreDefaultColor),
         ),
-      ],
-    );
-  }
-
-  Widget _buildSliders(AppLocalizations l10n) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = _color;
-    final pure = HSLColor.fromAHSL(1, color.hue, 1, 0.5).toColor();
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              key: const Key('colorPreview'),
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: color.toColor(),
-                shape: BoxShape.circle,
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextField(
-                key: const Key('colorCode'),
-                controller: _code,
-                onChanged: _typeCode,
-                maxLength: 6,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp('[0-9a-fA-F]')),
-                ],
-                decoration: InputDecoration(
-                  labelText: l10n.colorCode,
-                  prefixText: '#',
-                  counterText: '',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _ColorSlider(
-          key: const Key('hue'),
-          label: l10n.hue,
-          value: color.hue,
-          max: 360,
-          colors: [
-            for (var hue = 0; hue <= 360; hue += 60)
-              HSLColor.fromAHSL(1, hue.toDouble(), 1, 0.5).toColor(),
-          ],
-          onChanged: (hue) => _slide(color.withHue(hue)),
-        ),
-        _ColorSlider(
-          key: const Key('saturation'),
-          label: l10n.saturation,
-          value: color.saturation,
-          colors: [
-            color.withSaturation(0).toColor(),
-            color.withSaturation(1).toColor(),
-          ],
-          onChanged: (saturation) => _slide(color.withSaturation(saturation)),
-        ),
-        _ColorSlider(
-          key: const Key('lightness'),
-          label: l10n.lightness,
-          value: color.lightness,
-          colors: [Colors.black, pure, Colors.white],
-          onChanged: (lightness) => _slide(color.withLightness(lightness)),
+        FilledButton(
+          key: const Key('confirmColor'),
+          onPressed: () => Navigator.of(context).pop((color: picked)),
+          child: Text(l10n.ok),
         ),
       ],
     );
@@ -1147,49 +1099,43 @@ class _ColorSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(label, style: Theme.of(context).textTheme.labelLarge),
-        ),
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              height: 12,
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.black12),
-                gradient: LinearGradient(colors: colors),
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            height: 12,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.black12),
+              gradient: LinearGradient(colors: colors),
+            ),
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: Colors.transparent,
+              inactiveTrackColor: Colors.transparent,
+              thumbColor: Colors.white,
+              overlayColor: Colors.black12,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 11,
+                elevation: 3,
               ),
             ),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: Colors.transparent,
-                inactiveTrackColor: Colors.transparent,
-                thumbColor: Colors.white,
-                overlayColor: Colors.black12,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                thumbShape: const RoundSliderThumbShape(
-                  enabledThumbRadius: 11,
-                  elevation: 3,
-                ),
-              ),
-              child: Semantics(
-                label: label,
-                child: Slider(
-                  value: value.clamp(0, max),
-                  max: max,
-                  onChanged: onChanged,
-                ),
+            child: Semantics(
+              label: label,
+              child: Slider(
+                value: value.clamp(0, max),
+                max: max,
+                onChanged: onChanged,
               ),
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

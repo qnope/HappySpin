@@ -502,12 +502,6 @@ abstract class AppLocalizations {
   /// **'Renommer le choix'**
   String get renameChoice;
 
-  /// No description provided for @preciseColor.
-  ///
-  /// In fr, this message translates to:
-  /// **'Choisir précisément…'**
-  String get preciseColor;
-
   /// No description provided for @hue.
   ///
   /// In fr, this message translates to:
@@ -531,12 +525,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Code couleur'**
   String get colorCode;
-
-  /// No description provided for @back.
-  ///
-  /// In fr, this message translates to:
-  /// **'Retour'**
-  String get back;
 
   /// No description provided for @ok.
   ///

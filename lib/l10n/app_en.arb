@@ -67,11 +67,9 @@
   "changeColor": "Change color",
   "restoreDefaultColor": "Restore default",
   "renameChoice": "Rename choice",
-  "preciseColor": "Pick exact color…",
   "hue": "Hue",
   "saturation": "Saturation",
   "lightness": "Lightness",
   "colorCode": "Color code",
-  "back": "Back",
   "ok": "OK"
 }
