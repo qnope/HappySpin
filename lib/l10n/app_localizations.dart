@@ -532,11 +532,11 @@ abstract class AppLocalizations {
   /// **'OK'**
   String get ok;
 
-  /// No description provided for @renameChoiceNamed.
+  /// No description provided for @choiceName.
   ///
   /// In fr, this message translates to:
-  /// **'Renommer « {name} »'**
-  String renameChoiceNamed(String name);
+  /// **'Nom du choix'**
+  String get choiceName;
 }
 
 class _AppLocalizationsDelegate

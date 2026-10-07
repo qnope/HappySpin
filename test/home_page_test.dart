@@ -109,22 +109,21 @@ void main() {
     expect(find.widgetWithText(ListTile, 'Tacos'), findsNothing);
   });
 
-  testWidgets('tapping a choice\'s name renames it in the field above', (
-    tester,
-  ) async {
+  testWidgets('tapping a choice\'s name renames it in a popup', (tester) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('choiceName1')));
-    await tester.pump();
-    final field = find.byKey(const Key('choiceInput'));
-    expect(tester.widget<TextField>(field).controller!.text, 'Sushi');
-    expect(find.text('Renommer « Sushi »'), findsOneWidget);
-    expect(tester.widget<ListTile>(find.byType(ListTile).at(1)).selected, true);
+    await tester.pumpAndSettle();
+    expect(find.text('Renommer le choix'), findsOneWidget);
+    final field = find.byKey(const Key('choiceNameInput'));
+    final controller = tester.widget<TextField>(field).controller!;
+    expect(controller.text, 'Sushi');
+    // Selected, to be typed over.
+    expect(controller.selection.textInside(controller.text), 'Sushi');
 
     await tester.enterText(field, '  Ramen ');
     await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pump();
-    expect(find.text('Nouveau choix'), findsOneWidget);
-    expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    await tester.pumpAndSettle();
+    expect(find.text('Renommer le choix'), findsNothing);
     expect(find.widgetWithText(ListTile, 'Ramen'), findsOneWidget);
     expect(store.saved!.selected.choices, [
       'Pizza',
@@ -136,24 +135,21 @@ void main() {
     expect(wheel.choices, contains('Ramen'));
   });
 
-  testWidgets('renaming can be cancelled, and an empty name keeps the old', (
-    tester,
-  ) async {
+  testWidgets('cancelling or an empty name keeps the old name', (tester) async {
     final store = await pump(tester);
-    final field = find.byKey(const Key('choiceInput'));
+    final field = find.byKey(const Key('choiceNameInput'));
     await tester.tap(find.byKey(const Key('choiceName0')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.enterText(field, 'Tacos');
-    await tester.tap(find.byKey(const Key('cancelRename')));
-    await tester.pump();
-    expect(find.text('Nouveau choix'), findsOneWidget);
+    await tester.tap(find.text('Annuler'));
+    await tester.pumpAndSettle();
     expect(find.widgetWithText(ListTile, 'Pizza'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('choiceName0')));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.enterText(field, '   ');
-    await tester.tap(find.byKey(const Key('confirmRename')));
-    await tester.pump();
+    await tester.tap(find.byKey(const Key('confirmChoiceName')));
+    await tester.pumpAndSettle();
     expect(find.widgetWithText(ListTile, 'Pizza'), findsOneWidget);
     expect(store.saved, isNull);
   });
@@ -581,7 +577,7 @@ void main() {
     expect(find.byKey(const Key('spin')), findsOneWidget);
   });
 
-  testWidgets('a choice being renamed stays above the keyboard', (
+  testWidgets('the popup renaming a choice stays above the keyboard', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1179, 2556);
@@ -590,18 +586,14 @@ void main() {
     tester.view.viewPadding = tester.view.padding;
     addTearDown(tester.view.reset);
     await pump(tester);
-    final wheel = find.byType(SpinningWheel);
-    final size = tester.getSize(wheel);
 
     await tester.tap(find.byKey(const Key('choiceName3')));
     tester.view.viewInsets = const FakeViewPadding(bottom: 336 * 3);
     tester.view.padding = const FakeViewPadding(top: 59 * 3);
     await tester.pumpAndSettle();
 
-    final field = find.byKey(const Key('choiceInput'));
-    expect(find.text('Renommer « Salade »'), findsOneWidget);
-    expect(tester.getSize(wheel), size);
-    expect(tester.getBottomLeft(field).dy, lessThanOrEqualTo(852 - 336));
+    final confirm = find.byKey(const Key('confirmChoiceName'));
+    expect(tester.getBottomLeft(confirm).dy, lessThanOrEqualTo(852 - 336));
   });
 
   testWidgets('sounds can be turned off in the settings', (tester) async {

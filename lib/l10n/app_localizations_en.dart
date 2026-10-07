@@ -253,7 +253,5 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ok => 'OK';
 
   @override
-  String renameChoiceNamed(String name) {
-    return 'Rename “$name”';
-  }
+  String get choiceName => 'Choice name';
 }

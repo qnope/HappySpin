@@ -44,10 +44,6 @@ class _HomePageState extends State<HomePage>
   final TextEditingController _input = TextEditingController();
   final FocusNode _inputFocus = FocusNode();
 
-  // The choice being renamed in the field above the list, if any. The field
-  // stays above the keyboard, where a field in the list would be hidden.
-  int? _renaming;
-
   late final ChoiceListStore _store =
       widget.store ?? PreferencesChoiceListStore();
 
@@ -141,7 +137,6 @@ class _HomePageState extends State<HomePage>
   }
 
   void _updateLists(List<ChoiceList> lists, int current) {
-    if (current != _lists!.current) _cancelRename();
     final updated = ChoiceLists(lists: lists, current: current);
     setState(() => _lists = updated);
     _store.save(updated).catchError((Object _) {});
@@ -234,8 +229,13 @@ class _HomePageState extends State<HomePage>
   }) async {
     final name = await showDialog<String>(
       context: context,
-      builder: (context) =>
-          _ListNameDialog(title: title, action: action, initial: initial),
+      builder: (context) => _NameDialog(
+        title: title,
+        action: action,
+        label: AppLocalizations.of(context).listName,
+        hint: AppLocalizations.of(context).listNameHint,
+        initial: initial,
+      ),
     );
     final trimmed = name?.trim() ?? '';
     return trimmed.isEmpty ? null : trimmed;
@@ -251,7 +251,6 @@ class _HomePageState extends State<HomePage>
   }
 
   void _addChoice() {
-    if (_renaming != null) return _finishRename();
     final text = _input.text.trim();
     if (text.isEmpty) return;
     _setSelected(_lists!.selected.withChoice(text));
@@ -260,7 +259,6 @@ class _HomePageState extends State<HomePage>
   }
 
   void _removeChoice(int index) {
-    _cancelRename();
     _setSelected(_lists!.selected.withoutChoice(index));
   }
 
@@ -280,40 +278,29 @@ class _HomePageState extends State<HomePage>
     _setSelected(_lists!.selected.withColor(index, picked.color));
   }
 
-  /// Puts the name of the choice at [index] in the field above the list, to
-  /// change it there.
-  void _startRename(int index) {
+  /// Asks for a new name for the choice at [index], in a popup that stays
+  /// clear of the keyboard; an empty name keeps the old one.
+  Future<void> _renameChoice(int index) async {
     if (_spinning) return;
-    _input.value = TextEditingValue(
-      text: _choices[index],
-      selection: TextSelection(
-        baseOffset: 0,
-        extentOffset: _choices[index].length,
+    final l10n = AppLocalizations.of(context);
+    final list = _lists!.selected;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => _NameDialog(
+        title: l10n.renameChoice,
+        action: l10n.rename,
+        label: l10n.choiceName,
+        initial: list.choices[index],
+        selectAll: true,
+        fieldKey: const Key('choiceNameInput'),
+        confirmKey: const Key('confirmChoiceName'),
       ),
     );
-    setState(() => _renaming = index);
-    _inputFocus.requestFocus();
-  }
-
-  /// Keeps the new name of the choice being renamed, unless it was left
-  /// empty, and gives the field back to new choices.
-  void _finishRename() {
-    final index = _renaming;
-    if (index == null) return;
-    final name = _input.text.trim();
-    _cancelRename();
-    _inputFocus.unfocus();
-    if (index >= _choices.length || name.isEmpty || name == _choices[index]) {
-      return;
-    }
-    _setSelected(_lists!.selected.withRenamed(index, name));
-  }
-
-  /// Gives the field back to new choices, leaving the name as it was.
-  void _cancelRename() {
-    if (_renaming == null) return;
-    setState(() => _renaming = null);
-    _input.clear();
+    final trimmed = name?.trim() ?? '';
+    // The list may have changed while the popup was open.
+    if (!mounted || trimmed.isEmpty || _lists!.selected != list) return;
+    if (trimmed == list.choices[index]) return;
+    _setSelected(list.withRenamed(index, trimmed));
   }
 
   void _setWeight(int index, int weight) {
@@ -336,7 +323,6 @@ class _HomePageState extends State<HomePage>
   }
 
   void _clearChoices() {
-    _cancelRename();
     _setSelected(_lists!.selected.copyWith(choices: [], weights: []));
   }
 
@@ -767,10 +753,6 @@ class _HomePageState extends State<HomePage>
     final l10n = AppLocalizations.of(context);
     final onWheel = _onWheel;
     final out = _eliminating ? _lists!.selected.eliminated.length : 0;
-    // The list may have changed under a choice being renamed.
-    final renaming = (_renaming ?? _choices.length) < _choices.length
-        ? _renaming
-        : null;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
@@ -783,34 +765,14 @@ class _HomePageState extends State<HomePage>
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _addChoice(),
             decoration: InputDecoration(
-              labelText: renaming == null
-                  ? l10n.newChoice
-                  : l10n.renameChoiceNamed(_choices[renaming]),
+              labelText: l10n.newChoice,
               border: const OutlineInputBorder(),
-              prefixIcon: renaming == null
-                  ? null
-                  : IconButton(
-                      key: const Key('cancelRename'),
-                      tooltip: l10n.cancel,
-                      onPressed: () {
-                        _cancelRename();
-                        _inputFocus.unfocus();
-                      },
-                      icon: const Icon(Icons.close),
-                    ),
-              suffixIcon: renaming == null
-                  ? IconButton(
-                      key: const Key('addChoice'),
-                      tooltip: l10n.add,
-                      onPressed: _spinning ? null : _addChoice,
-                      icon: const Icon(Icons.add_circle),
-                    )
-                  : IconButton(
-                      key: const Key('confirmRename'),
-                      tooltip: l10n.rename,
-                      onPressed: _finishRename,
-                      icon: const Icon(Icons.check_circle),
-                    ),
+              suffixIcon: IconButton(
+                key: const Key('addChoice'),
+                tooltip: l10n.add,
+                onPressed: _spinning ? null : _addChoice,
+                icon: const Icon(Icons.add_circle),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -858,11 +820,10 @@ class _HomePageState extends State<HomePage>
                                 : _colorOf(i, palette),
                           ),
                         ),
-                        selected: renaming == i,
                         title: GestureDetector(
                           key: Key('choiceName$i'),
                           behavior: HitTestBehavior.opaque,
-                          onTap: _spinning ? null : () => _startRename(i),
+                          onTap: _spinning ? null : () => _renameChoice(i),
                           child: Semantics(
                             button: true,
                             hint: l10n.renameChoice,
@@ -1207,24 +1168,44 @@ String _chanceLabel(AppLocalizations l10n, double chance) {
   return l10n.percent('${percent.round()}');
 }
 
-class _ListNameDialog extends StatefulWidget {
-  const _ListNameDialog({
+/// Asks for a name: of a list, or of a choice. Sits in the upper part of the
+/// screen, so that the keyboard does not cover it.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({
     required this.title,
     required this.action,
+    required this.label,
+    this.hint,
     required this.initial,
+    this.selectAll = false,
+    this.fieldKey = const Key('listNameInput'),
+    this.confirmKey = const Key('confirmListName'),
   });
+
+  final Key fieldKey;
+  final Key confirmKey;
 
   final String title;
   final String action;
+  final String label;
+  final String? hint;
   final String initial;
 
+  /// Whether the name starts selected, to be typed over.
+  final bool selectAll;
+
   @override
-  State<_ListNameDialog> createState() => _ListNameDialogState();
+  State<_NameDialog> createState() => _NameDialogState();
 }
 
-class _ListNameDialogState extends State<_ListNameDialog> {
-  late final TextEditingController _name = TextEditingController(
-    text: widget.initial,
+class _NameDialogState extends State<_NameDialog> {
+  late final TextEditingController _name = TextEditingController.fromValue(
+    TextEditingValue(
+      text: widget.initial,
+      selection: widget.selectAll
+          ? TextSelection(baseOffset: 0, extentOffset: widget.initial.length)
+          : TextSelection.collapsed(offset: widget.initial.length),
+    ),
   );
 
   @override
@@ -1239,17 +1220,18 @@ class _ListNameDialogState extends State<_ListNameDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
+      alignment: const Alignment(0, -0.6),
       title: Text(widget.title),
       content: TextField(
-        key: const Key('listNameInput'),
+        key: widget.fieldKey,
         controller: _name,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
         decoration: InputDecoration(
-          labelText: l10n.listName,
-          hintText: l10n.listNameHint,
+          labelText: widget.label,
+          hintText: widget.hint,
         ),
       ),
       actions: [
@@ -1258,7 +1240,7 @@ class _ListNameDialogState extends State<_ListNameDialog> {
           child: Text(l10n.cancel),
         ),
         FilledButton(
-          key: const Key('confirmListName'),
+          key: widget.confirmKey,
           onPressed: _submit,
           child: Text(widget.action),
         ),
