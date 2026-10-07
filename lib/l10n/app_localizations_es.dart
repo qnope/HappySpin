@@ -253,7 +253,5 @@ class AppLocalizationsEs extends AppLocalizations {
   String get ok => 'Aceptar';
 
   @override
-  String renameChoiceNamed(String name) {
-    return 'Renombrar «$name»';
-  }
+  String get choiceName => 'Nombre de la opción';
 }

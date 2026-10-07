@@ -110,12 +110,5 @@
   "lightness": "Luminosité",
   "colorCode": "Code couleur",
   "ok": "OK",
-  "renameChoiceNamed": "Renommer « {name} »",
-  "@renameChoiceNamed": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  }
+  "choiceName": "Nom du choix"
 }

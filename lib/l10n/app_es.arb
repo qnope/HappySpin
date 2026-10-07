@@ -72,5 +72,5 @@
   "lightness": "Luminosidad",
   "colorCode": "Código de color",
   "ok": "Aceptar",
-  "renameChoiceNamed": "Renombrar «{name}»"
+  "choiceName": "Nombre de la opción"
 }

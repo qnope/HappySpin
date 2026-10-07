@@ -72,5 +72,5 @@
   "lightness": "Lightness",
   "colorCode": "Color code",
   "ok": "OK",
-  "renameChoiceNamed": "Rename “{name}”"
+  "choiceName": "Choice name"
 }
