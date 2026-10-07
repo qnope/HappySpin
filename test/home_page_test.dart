@@ -181,6 +181,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Restaurer par défaut'));
     await tester.pumpAndSettle();
+    // The popup stays open, back on the theme's color, until confirmed.
+    final code = tester.widget<TextField>(find.byKey(const Key('colorCode')));
+    expect(
+      code.controller!.text,
+      (palette.segmentColor(2, 4).toARGB32() & 0xFFFFFF)
+          .toRadixString(16)
+          .padLeft(6, '0')
+          .toUpperCase(),
+    );
+    expect(store.saved!.selected.colorOf(2), picked);
+    await tester.tap(find.byKey(const Key('confirmColor')));
+    await tester.pumpAndSettle();
+    expect(find.text('Couleur du choix'), findsNothing);
     expect(wheelColor(), palette.segmentColor(2, 4));
     expect(store.saved!.selected.colorOf(2), isNull);
   });

@@ -271,6 +271,7 @@ class _HomePageState extends State<HomePage>
       builder: (context) => _ChoiceColorDialog(
         current: _colorOf(index, palette),
         themeColor: palette.segmentColor(index, _choices.length),
+        isThemeColor: _lists!.selected.colorOf(index) == null,
         palette: palette,
       ),
     );
@@ -889,11 +890,12 @@ class _HomePageState extends State<HomePage>
 
 /// Asks for a choice's color, with sliders over every color, shortcuts to
 /// the palette's, and a color code. Closes with the color picked, with a null
-/// color to give the choice back the theme's, or with nothing if dismissed.
+/// color to give the choice the theme's, or with nothing if dismissed.
 class _ChoiceColorDialog extends StatefulWidget {
   const _ChoiceColorDialog({
     required this.current,
     required this.themeColor,
+    required this.isThemeColor,
     required this.palette,
   });
 
@@ -901,6 +903,9 @@ class _ChoiceColorDialog extends StatefulWidget {
 
   /// The color the theme gives the choice.
   final Color themeColor;
+
+  /// Whether the choice has the theme's color, rather than one of its own.
+  final bool isThemeColor;
   final WheelPalette palette;
 
   @override
@@ -909,6 +914,9 @@ class _ChoiceColorDialog extends StatefulWidget {
 
 class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
   late HSLColor _color = HSLColor.fromColor(widget.current);
+  // Whether the choice is to keep the theme's color, and follow the theme
+  // when it changes.
+  late bool _themeColor = widget.isThemeColor;
   late final TextEditingController _code = TextEditingController(
     text: _hex(widget.current),
   );
@@ -925,8 +933,11 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
       .padLeft(6, '0')
       .toUpperCase();
 
-  void _set(HSLColor color) {
-    setState(() => _color = color);
+  void _set(HSLColor color, {bool themeColor = false}) {
+    setState(() {
+      _color = color;
+      _themeColor = themeColor;
+    });
     _code.text = _hex(color.toColor());
   }
 
@@ -934,7 +945,10 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
     if (code.length != 6) return;
     final value = int.tryParse(code, radix: 16);
     if (value == null) return;
-    setState(() => _color = HSLColor.fromColor(Color(0xFF000000 | value)));
+    setState(() {
+      _color = HSLColor.fromColor(Color(0xFF000000 | value));
+      _themeColor = false;
+    });
   }
 
   @override
@@ -1038,13 +1052,19 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
       actions: [
         TextButton.icon(
           key: const Key('restoreDefaultColor'),
-          onPressed: () => Navigator.of(context).pop((color: null)),
+          onPressed: _themeColor
+              ? null
+              : () => _set(
+                  HSLColor.fromColor(widget.themeColor),
+                  themeColor: true,
+                ),
           icon: CircleAvatar(radius: 8, backgroundColor: widget.themeColor),
           label: Text(l10n.restoreDefaultColor),
         ),
         FilledButton(
           key: const Key('confirmColor'),
-          onPressed: () => Navigator.of(context).pop((color: picked)),
+          onPressed: () =>
+              Navigator.of(context).pop((color: _themeColor ? null : picked)),
           child: Text(l10n.ok),
         ),
       ],
