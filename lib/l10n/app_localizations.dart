@@ -477,6 +477,30 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Pizza|Sushi|Burger|Salade'**
   String get defaultChoices;
+
+  /// No description provided for @choiceColor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Couleur du choix'**
+  String get choiceColor;
+
+  /// No description provided for @changeColor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer la couleur'**
+  String get changeColor;
+
+  /// No description provided for @restoreDefaultColor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer par défaut'**
+  String get restoreDefaultColor;
+
+  /// No description provided for @renameChoice.
+  ///
+  /// In fr, this message translates to:
+  /// **'Renommer le choix'**
+  String get renameChoice;
 }
 
 class _AppLocalizationsDelegate

@@ -100,5 +100,9 @@
   "defaultChoices": "Pizza|Sushi|Burger|Salade",
   "@defaultChoices": {
     "description": "The choices of the first list, separated by |."
-  }
+  },
+  "choiceColor": "Couleur du choix",
+  "changeColor": "Changer la couleur",
+  "restoreDefaultColor": "Restaurer par défaut",
+  "renameChoice": "Renommer le choix"
 }

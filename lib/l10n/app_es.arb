@@ -62,5 +62,9 @@
   "listName": "Nombre de la lista",
   "listNameHint": "Ej.: Planes del finde",
   "defaultListName": "Comidas",
-  "defaultChoices": "Pizza|Sushi|Hamburguesa|Ensalada"
+  "defaultChoices": "Pizza|Sushi|Hamburguesa|Ensalada",
+  "choiceColor": "Color de la opción",
+  "changeColor": "Cambiar el color",
+  "restoreDefaultColor": "Restaurar por defecto",
+  "renameChoice": "Renombrar la opción"
 }

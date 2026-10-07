@@ -62,5 +62,9 @@
   "listName": "List name",
   "listNameHint": "E.g. Weekend outings",
   "defaultListName": "Meals",
-  "defaultChoices": "Pizza|Sushi|Burger|Salad"
+  "defaultChoices": "Pizza|Sushi|Burger|Salad",
+  "choiceColor": "Choice color",
+  "changeColor": "Change color",
+  "restoreDefaultColor": "Restore default",
+  "renameChoice": "Rename choice"
 }

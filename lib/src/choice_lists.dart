@@ -1,14 +1,18 @@
 import 'dart:convert';
 
+import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// A named list of choices, one per wheel, each with a weight.
+/// A named list of choices, one per wheel, each with a weight and maybe a
+/// color of its own.
 class ChoiceList {
-  /// [weights] go with [choices] one for one; missing ones count as 1.
+  /// [weights] and [colors] go with [choices] one for one; missing weights
+  /// count as 1, and missing colors are the theme's.
   const ChoiceList({
     required this.name,
     required this.choices,
     this._weights,
+    this._colors,
     this.eliminated = const {},
   });
 
@@ -19,6 +23,7 @@ class ChoiceList {
   final String name;
   final List<String> choices;
   final List<int>? _weights;
+  final List<Color?>? _colors;
 
   /// Indexes of the choices that came out in elimination mode, and are left
   /// off the wheel until they are put back.
@@ -43,6 +48,19 @@ class ChoiceList {
     return weights[index].clamp(minWeight, maxWeight);
   }
 
+  /// Color the user gave each choice, null where the theme picks it.
+  List<Color?> get colors => [
+    for (var i = 0; i < choices.length; i++) colorOf(i),
+  ];
+
+  /// Color the user gave the choice at [index], or null if the theme picks
+  /// it.
+  Color? colorOf(int index) {
+    final colors = _colors;
+    if (colors == null || index >= colors.length) return null;
+    return colors[index];
+  }
+
   /// Chance of picking the choice at [index], between 0 and 1, when the
   /// wheel holds the choices at [among] (all of them by default).
   double chanceOf(int index, {Iterable<int>? among}) {
@@ -51,29 +69,33 @@ class ChoiceList {
     return weightOf(index) / total;
   }
 
-  /// A new list of [choices] drops the weights and eliminations of the old
-  /// one, unless new ones are given.
+  /// A new list of [choices] drops the weights, colors and eliminations of
+  /// the old one, unless new ones are given.
   ChoiceList copyWith({
     String? name,
     List<String>? choices,
     List<int>? weights,
+    List<Color?>? colors,
     Set<int>? eliminated,
   }) => ChoiceList(
     name: name ?? this.name,
     choices: choices ?? this.choices,
     weights: weights ?? (choices == null ? _weights : null),
+    colors: colors ?? (choices == null ? _colors : null),
     eliminated: eliminated ?? (choices == null ? this.eliminated : const {}),
   );
 
   ChoiceList withChoice(String choice, {int weight = 1}) => copyWith(
     choices: [...choices, choice],
     weights: [...weights, weight],
+    colors: [...colors, null],
     eliminated: eliminated,
   );
 
   ChoiceList withoutChoice(int index) => copyWith(
     choices: [...choices]..removeAt(index),
     weights: weights..removeAt(index),
+    colors: colors..removeAt(index),
     // The choices after the removed one move up by one.
     eliminated: {
       for (final i in eliminated)
@@ -95,10 +117,24 @@ class ChoiceList {
   ChoiceList withWeight(int index, int weight) =>
       copyWith(weights: weights..[index] = weight.clamp(minWeight, maxWeight));
 
+  /// Gives the choice at [index] its own [color], or the theme's when null.
+  ChoiceList withColor(int index, Color? color) =>
+      copyWith(colors: colors..[index] = color);
+
+  /// Calls the choice at [index] [name], keeping its weight, color and
+  /// whether it came out.
+  ChoiceList withRenamed(int index, String name) => copyWith(
+    choices: [...choices]..[index] = name,
+    weights: weights,
+    colors: colors,
+    eliminated: eliminated,
+  );
+
   Map<String, Object?> toJson() => {
     'name': name,
     'choices': choices,
     'weights': weights,
+    'colors': [for (final color in colors) color?.toARGB32()],
     'eliminated': [...eliminated]..sort(),
   };
 
@@ -107,6 +143,11 @@ class ChoiceList {
     choices: (json['choices'] as List).cast<String>(),
     // Lists saved before weights existed have none: every choice weighs 1.
     weights: (json['weights'] as List?)?.cast<int>(),
+    // Lists saved before colors existed take all of theirs from the theme.
+    colors: [
+      for (final color in (json['colors'] as List?)?.cast<int?>() ?? <int?>[])
+        color == null ? null : Color(color),
+    ],
     eliminated: {
       for (final i in (json['eliminated'] as List?)?.cast<int>() ?? <int>[])
         if (i >= 0 && i < (json['choices'] as List).length) i,
