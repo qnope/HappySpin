@@ -238,4 +238,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get renameChoice => 'Renommer le choix';
+
+  @override
+  String get preciseColor => 'Choisir précisément…';
+
+  @override
+  String get hue => 'Teinte';
+
+  @override
+  String get saturation => 'Saturation';
+
+  @override
+  String get lightness => 'Luminosité';
+
+  @override
+  String get colorCode => 'Code couleur';
+
+  @override
+  String get back => 'Retour';
+
+  @override
+  String get ok => 'OK';
 }
