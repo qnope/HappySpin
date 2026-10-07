@@ -240,9 +240,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get renameChoice => 'Renommer le choix';
 
   @override
-  String get preciseColor => 'Choisir précisément…';
-
-  @override
   String get hue => 'Teinte';
 
   @override
@@ -253,9 +250,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get colorCode => 'Code couleur';
-
-  @override
-  String get back => 'Retour';
 
   @override
   String get ok => 'OK';

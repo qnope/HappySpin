@@ -67,11 +67,9 @@
   "changeColor": "Cambiar el color",
   "restoreDefaultColor": "Restaurar por defecto",
   "renameChoice": "Renombrar la opción",
-  "preciseColor": "Elegir el color exacto…",
   "hue": "Tono",
   "saturation": "Saturación",
   "lightness": "Luminosidad",
   "colorCode": "Código de color",
-  "back": "Volver",
   "ok": "Aceptar"
 }

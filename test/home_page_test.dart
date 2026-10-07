@@ -159,14 +159,12 @@ void main() {
     await tester.tap(find.byKey(const Key('color2')));
     await tester.pumpAndSettle();
     expect(find.text('Couleur du choix'), findsOneWidget);
-    // Colors are grouped by palette, the current one first.
-    expect(
-      tester.getTopLeft(find.text('Festif')).dy,
-      lessThan(tester.getTopLeft(find.text('Océan')).dy),
-    );
-    // Picks a color of another palette.
-    final picked = WheelPalette.ocean.colors.first;
-    await tester.tap(find.byKey(const Key('swatch-ocean-0')));
+    // Picks one of the theme's colors, then confirms.
+    final picked = palette.colors[5];
+    await tester.tap(find.byKey(const Key('swatch5')));
+    await tester.pump();
+    expect(find.text('Couleur du choix'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('confirmColor')));
     await tester.pumpAndSettle();
     expect(find.text('Couleur du choix'), findsNothing);
     expect(wheelColor(), picked);
@@ -183,9 +181,6 @@ void main() {
   testWidgets('any color can be picked exactly', (tester) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('color1')));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('preciseColor')));
-    await tester.tap(find.byKey(const Key('preciseColor')));
     await tester.pumpAndSettle();
 
     // The code starts at the choice's color, and follows the sliders.
@@ -217,11 +212,13 @@ void main() {
     expect(wheel.colors![1], const Color(0xFF123ABC));
   });
 
-  testWidgets('cancelling the color popup changes nothing', (tester) async {
+  testWidgets('closing the color popup changes nothing', (tester) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('color0')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Annuler'));
+    await tester.tap(find.byKey(const Key('swatch3')));
+    await tester.pump();
+    await tester.tapAt(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(store.saved, isNull);
   });

@@ -105,11 +105,9 @@
   "changeColor": "Changer la couleur",
   "restoreDefaultColor": "Restaurer par défaut",
   "renameChoice": "Renommer le choix",
-  "preciseColor": "Choisir précisément…",
   "hue": "Teinte",
   "saturation": "Saturation",
   "lightness": "Luminosité",
   "colorCode": "Code couleur",
-  "back": "Retour",
   "ok": "OK"
 }
