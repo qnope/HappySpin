@@ -71,5 +71,6 @@
   "saturation": "Saturación",
   "lightness": "Luminosidad",
   "colorCode": "Código de color",
-  "ok": "Aceptar"
+  "ok": "Aceptar",
+  "renameChoiceNamed": "Renombrar «{name}»"
 }
