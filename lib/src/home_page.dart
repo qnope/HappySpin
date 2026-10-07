@@ -914,19 +914,6 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-/// Colors the user can give a choice: the ones of the current palette
-/// first, then those of the other palettes, then a few greys.
-List<Color> _swatches(WheelPalette palette) {
-  final colors = <Color>{
-    ...palette.colors,
-    for (final other in WheelPalette.all) ...other.colors,
-    const Color(0xFF212529),
-    const Color(0xFF6C757D),
-    const Color(0xFFADB5BD),
-  };
-  return [...colors];
-}
-
 /// Asks for a choice's color. Closes with the color picked, with a null
 /// color to give the choice back the theme's, or with nothing if cancelled.
 class _ChoiceColorDialog extends StatelessWidget {
@@ -946,25 +933,40 @@ class _ChoiceColorDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final swatches = _swatches(palette);
+    // The current palette first, then the others, each under its name.
+    final palettes = [palette, ...WheelPalette.all.where((p) => p != palette)];
     return AlertDialog(
       title: Text(l10n.choiceColor),
       content: SizedBox(
         width: 320,
         child: SingleChildScrollView(
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < swatches.length; i++)
-                _Swatch(
-                  key: Key('swatch$i'),
-                  color: swatches[i],
-                  selected: swatches[i] == current,
-                  outline: scheme.outline,
-                  onTap: () => Navigator.of(context).pop((color: swatches[i])),
+              for (final p in palettes) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 6),
+                  child: Text(
+                    p.name(l10n),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                 ),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < p.colors.length; i++)
+                      _Swatch(
+                        key: Key('swatch-${p.id}-$i'),
+                        color: p.colors[i],
+                        selected: p.colors[i] == current,
+                        outline: scheme.outline,
+                        onTap: () =>
+                            Navigator.of(context).pop((color: p.colors[i])),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -1008,22 +1010,22 @@ class _Swatch extends StatelessWidget {
       selected: selected,
       child: InkResponse(
         onTap: onTap,
-        radius: 24,
+        radius: 18,
         child: Container(
-          width: 40,
-          height: 40,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
               color: selected ? outline : outline.withValues(alpha: 0.3),
-              width: selected ? 3 : 1,
+              width: selected ? 2.5 : 1,
             ),
           ),
           child: selected
               ? Icon(
                   Icons.check,
-                  size: 22,
+                  size: 16,
                   color: light ? Colors.black87 : Colors.white,
                 )
               : null,
