@@ -236,4 +236,39 @@ void main() {
       expect(wins[i] / spins, closeTo(expected, 0.05), reason: '$wins');
     }
   });
+
+  test('a wheel with many choices stops too', () {
+    final random = math.Random(3);
+    for (final count in [50, 100, 200, 400]) {
+      for (var k = 0; k < 5; k++) {
+        final wheel = WheelPhysics(
+          layout: WheelLayout([
+            for (var i = 0; i < count; i++) 1 + random.nextInt(5),
+          ]),
+          angle: random.nextDouble() * fullTurn,
+          velocity: 4.5 + random.nextDouble() * 2,
+        );
+        expect(spin(wheel), lessThan(20), reason: 'count=$count');
+      }
+    }
+  });
+
+  test('the closest peg is found among all of them', () {
+    final random = math.Random(11);
+    for (var k = 0; k < 200; k++) {
+      final count = 2 + random.nextInt(60);
+      final layout = WheelLayout([
+        for (var i = 0; i < count; i++) 1 + random.nextInt(9),
+      ]);
+      final angle = (random.nextDouble() - 0.5) * 8 * fullTurn;
+      var best = double.infinity;
+      for (var i = 0; i < count; i++) {
+        var d = normalizeAngle(angle + layout.middle(i));
+        if (d > math.pi) d -= fullTurn;
+        if (d.abs() < best.abs()) best = d;
+      }
+      final wheel = WheelPhysics(layout: layout, angle: angle);
+      expect(wheel.pegOffset, closeTo(best, 1e-9), reason: 'count=$count');
+    }
+  });
 }

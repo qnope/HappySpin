@@ -106,8 +106,14 @@ class WheelPhysics {
   void _findClosestPeg() {
     if (_pegAngle == angle) return;
     _pegAngle = angle;
+    // The closest peg is the one of the segment under the pointer, or of a
+    // segment next to it: no need to go through all the pegs, which this
+    // does twice per step, hundreds of times a second.
+    final under = layout.indexAtRotation(angle);
+    final count = layout.count;
     var best = double.infinity;
-    for (var i = 0; i < layout.count; i++) {
+    for (var k = -1; k <= 1; k++) {
+      final i = (under + k + count) % count;
       var d = normalizeAngle(angle + layout.middle(i));
       if (d > math.pi) d -= fullTurn;
       if (d.abs() < best.abs()) {

@@ -26,11 +26,22 @@ abstract class WheelFeedback {
 /// Plays the wheel's sounds and vibrates the device.
 class DeviceWheelFeedback implements WheelFeedback {
   /// [enabled] tells whether the user wants sounds and vibrations.
-  DeviceWheelFeedback({required bool Function() enabled})
-    : _sounds = WheelSounds(enabled: enabled);
+  DeviceWheelFeedback({
+    required bool Function() enabled,
+    @visibleForTesting WheelSounds? sounds,
+    @visibleForTesting WheelHaptics? haptics,
+  }) : _sounds = sounds ?? WheelSounds(enabled: enabled),
+       _haptics = haptics ?? WheelHaptics();
+
+  /// Shortest time between two ticks. With many choices, a peg goes past
+  /// the pointer on every frame: playing a sound and vibrating that often
+  /// floods the phone with more requests than it can handle, until it
+  /// stops responding. Past this rate the ticks blur into a buzz anyway.
+  static const Duration minTickInterval = Duration(milliseconds: 45);
 
   final WheelSounds _sounds;
-  final WheelHaptics _haptics = WheelHaptics();
+  final WheelHaptics _haptics;
+  final Stopwatch _sinceTick = Stopwatch();
   Future<void>? _loading;
 
   @override
@@ -47,6 +58,10 @@ class DeviceWheelFeedback implements WheelFeedback {
 
   @override
   void tick(double speed) {
+    if (_sinceTick.isRunning && _sinceTick.elapsed < minTickInterval) return;
+    _sinceTick
+      ..reset()
+      ..start();
     _haptics.tick();
     _load();
     // Louder when the wheel turns fast, softer as it slows down.
