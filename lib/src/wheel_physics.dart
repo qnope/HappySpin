@@ -32,6 +32,15 @@ class WheelPhysics {
   /// Extra friction while a finger presses on the wheel, in rad/s².
   static const double brakeFriction = 6;
 
+  /// Extra friction once the wheel turns slower than [slowSpeed], growing as
+  /// it slows down, so that it does not crawl from peg to peg for seconds
+  /// before stopping, in rad/s². Only between pegs: it leaves alone how a
+  /// peg holds the wheel, and so which choice wins.
+  static const double slowFriction = 1.2;
+
+  /// Speed below which [slowFriction] starts, in rad/s.
+  static const double slowSpeed = 1.5;
+
   /// Damping ratio of a peg pressed against the pointer, so that the wheel
   /// does not bounce off a peg as hard as it hit it.
   static const double contactDamping = 0.6;
@@ -67,7 +76,13 @@ class WheelPhysics {
   /// Whether a finger presses on the wheel, slowing it down much faster.
   bool braking = false;
 
-  double get _friction => braking ? friction + brakeFriction : friction;
+  double get _friction {
+    var total = braking ? friction + brakeFriction : friction;
+    if (_contact == 0 && _released == 0) {
+      total += slowFriction * math.max(0, 1 - velocity.abs() / slowSpeed);
+    }
+    return total;
+  }
 
   /// Pointer deflection, from -1 (bent fully left) to 1 (bent fully right).
   double pointer = 0;

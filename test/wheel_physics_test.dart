@@ -271,4 +271,31 @@ void main() {
       expect(wheel.pegOffset, closeTo(best, 1e-9), reason: 'count=$count');
     }
   });
+
+  test('a slow wheel stops soon instead of crawling from peg to peg', () {
+    final random = math.Random(4);
+    for (var k = 0; k < 300; k++) {
+      final wheel = WheelPhysics(
+        layout: WheelLayout([
+          for (var i = 0; i < 23; i++) k.isOdd ? 1 + random.nextInt(10) : 1,
+        ]),
+        angle: random.nextDouble() * fullTurn,
+        velocity: 4.5 + random.nextDouble() * 2,
+      );
+      // A short press slows the wheel down, then it goes on by itself.
+      final pressAt = 0.5 + random.nextDouble() * 2;
+      final pressFor = 0.1 + random.nextDouble() * 0.4;
+      var time = 0.0;
+      double? slowSince;
+      while (!wheel.isAtRest && time < 60) {
+        wheel.braking = time >= pressAt && time < pressAt + pressFor;
+        wheel.advance(1 / 60);
+        time += 1 / 60;
+        if (slowSince == null && !wheel.braking && wheel.velocity.abs() < 1) {
+          slowSince = time;
+        }
+      }
+      expect(time - slowSince!, lessThan(2), reason: 'k=$k');
+    }
+  });
 }
