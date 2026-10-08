@@ -72,5 +72,7 @@
   "lightness": "Luminosidad",
   "colorCode": "Código de color",
   "ok": "Aceptar",
-  "choiceName": "Nombre de la opción"
+  "choiceName": "Nombre de la opción",
+  "themeColors": "Colores del tema",
+  "customColor": "Color personalizado"
 }

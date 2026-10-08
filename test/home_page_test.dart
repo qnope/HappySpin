@@ -166,6 +166,7 @@ void main() {
     await tester.tap(find.byKey(const Key('color2')));
     await tester.pumpAndSettle();
     expect(find.text('Couleur du choix'), findsOneWidget);
+    expect(find.text('Couleurs du thème'), findsOneWidget);
     // Picks one of the theme's colors, then confirms.
     final picked = palette.colors[5];
     await tester.tap(find.byKey(const Key('swatch5')));
@@ -182,6 +183,8 @@ void main() {
     await tester.tap(find.text('Restaurer par défaut'));
     await tester.pumpAndSettle();
     // The popup stays open, back on the theme's color, until confirmed.
+    await tester.tap(find.byKey(const Key('customColor')));
+    await tester.pumpAndSettle();
     final code = tester.widget<TextField>(find.byKey(const Key('colorCode')));
     expect(
       code.controller!.text,
@@ -201,6 +204,10 @@ void main() {
   testWidgets('any color can be picked exactly', (tester) async {
     final store = await pump(tester);
     await tester.tap(find.byKey(const Key('color1')));
+    await tester.pumpAndSettle();
+    // The sliders and the code are folded away under the theme's colors.
+    expect(find.byKey(const Key('colorCode')), findsNothing);
+    await tester.tap(find.byKey(const Key('customColor')));
     await tester.pumpAndSettle();
 
     // The code starts at the choice's color, and follows the sliders.
@@ -230,6 +237,11 @@ void main() {
     expect(store.saved!.selected.colorOf(1), const Color(0xFF123ABC));
     final wheel = tester.widget<SpinningWheel>(find.byType(SpinningWheel));
     expect(wheel.colors![1], const Color(0xFF123ABC));
+
+    // A color of the user's own opens them unfolded.
+    await tester.tap(find.byKey(const Key('color1')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(code).controller!.text, '123ABC');
   });
 
   testWidgets('closing the color popup changes nothing', (tester) async {
