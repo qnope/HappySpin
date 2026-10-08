@@ -15,6 +15,11 @@ class PlatformWheelSounds implements WheelSounds {
   var _next = 0;
   AudioPlayer? _chime;
 
+  // Players still busy starting their sound. A tick waiting for its player
+  // is skipped rather than queued: queued requests would pile up faster
+  // than the phone plays them, and keep it busy long after the spin.
+  final Set<AudioPlayer> _starting = {};
+
   /// Mixes with the user's music rather than pausing it. On iPhone this
   /// takes the playback category, which plays even in silent mode: iOS
   /// refuses to mix the ambient one, and would then play the sounds with
@@ -70,12 +75,15 @@ class PlatformWheelSounds implements WheelSounds {
   }
 
   Future<void> _play(AudioPlayer player, double volume) async {
+    if (!_starting.add(player)) return;
     try {
       await player.setVolume(volume);
       await player.resume();
     } on Object catch (error) {
       // A missed sound is not worth interrupting the spin for.
       debugPrint('HappySpin: sound not played: $error');
+    } finally {
+      _starting.remove(player);
     }
   }
 }
