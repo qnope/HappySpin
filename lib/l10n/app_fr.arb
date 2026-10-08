@@ -110,5 +110,7 @@
   "lightness": "Luminosité",
   "colorCode": "Code couleur",
   "ok": "OK",
-  "choiceName": "Nom du choix"
+  "choiceName": "Nom du choix",
+  "themeColors": "Couleurs du thème",
+  "customColor": "Couleur personnalisée"
 }

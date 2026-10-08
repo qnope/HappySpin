@@ -537,6 +537,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Nom du choix'**
   String get choiceName;
+
+  /// No description provided for @themeColors.
+  ///
+  /// In fr, this message translates to:
+  /// **'Couleurs du thème'**
+  String get themeColors;
+
+  /// No description provided for @customColor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Couleur personnalisée'**
+  String get customColor;
 }
 
 class _AppLocalizationsDelegate

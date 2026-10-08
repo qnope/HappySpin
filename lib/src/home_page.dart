@@ -888,8 +888,8 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-/// Asks for a choice's color, with sliders over every color, shortcuts to
-/// the palette's, and a color code. Closes with the color picked, with a null
+/// Asks for a choice's color: one of the theme's, or any color with sliders
+/// and a color code, folded under them. Closes with the color picked, with a null
 /// color to give the choice the theme's, or with nothing if dismissed.
 class _ChoiceColorDialog extends StatefulWidget {
   const _ChoiceColorDialog({
@@ -913,6 +913,10 @@ class _ChoiceColorDialog extends StatefulWidget {
 }
 
 class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
+  // Whether the sliders and the color code show. They start open for a
+  // color the user made, which the theme's shortcuts do not hold.
+  late bool _advanced =
+      !widget.isThemeColor && !widget.palette.colors.contains(widget.current);
   late HSLColor _color = HSLColor.fromColor(widget.current);
   // Whether the choice is to keep the theme's color, and follow the theme
   // when it changes.
@@ -965,74 +969,17 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                key: const Key('colorPreview'),
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: picked,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: scheme.outlineVariant),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 150,
-                child: TextField(
-                  key: const Key('colorCode'),
-                  controller: _code,
-                  onChanged: _typeCode,
-                  maxLength: 6,
-                  textCapitalization: TextCapitalization.characters,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp('[0-9a-fA-F]')),
-                  ],
-                  decoration: InputDecoration(
-                    isDense: true,
-                    labelText: l10n.colorCode,
-                    prefixText: '#',
-                    counterText: '',
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
+              Text(
+                l10n.themeColors,
+                style: Theme.of(context).textTheme.labelLarge,
               ),
               const SizedBox(height: 8),
-              _ColorSlider(
-                key: const Key('hue'),
-                label: l10n.hue,
-                value: color.hue,
-                max: 360,
-                colors: [
-                  for (var hue = 0; hue <= 360; hue += 60)
-                    HSLColor.fromAHSL(1, hue.toDouble(), 1, 0.5).toColor(),
-                ],
-                onChanged: (hue) => _set(color.withHue(hue)),
-              ),
-              _ColorSlider(
-                key: const Key('saturation'),
-                label: l10n.saturation,
-                value: color.saturation,
-                colors: [
-                  color.withSaturation(0).toColor(),
-                  color.withSaturation(1).toColor(),
-                ],
-                onChanged: (saturation) =>
-                    _set(color.withSaturation(saturation)),
-              ),
-              _ColorSlider(
-                key: const Key('lightness'),
-                label: l10n.lightness,
-                value: color.lightness,
-                colors: [Colors.black, pure, Colors.white],
-                onChanged: (lightness) => _set(color.withLightness(lightness)),
-              ),
-              const SizedBox(height: 8),
-              // Shortcuts to the colors of the theme.
               Wrap(
                 spacing: 4,
                 runSpacing: 4,
-                alignment: WrapAlignment.center,
+                alignment: WrapAlignment.start,
                 children: [
                   for (var i = 0; i < widget.palette.colors.length; i++)
                     _Swatch(
@@ -1045,6 +992,100 @@ class _ChoiceColorDialogState extends State<_ChoiceColorDialog> {
                     ),
                 ],
               ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              InkWell(
+                key: const Key('customColor'),
+                onTap: () => setState(() => _advanced = !_advanced),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      AnimatedRotation(
+                        turns: _advanced ? 0.25 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: const Icon(Icons.chevron_right),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          l10n.customColor,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      CircleAvatar(radius: 10, backgroundColor: picked),
+                    ],
+                  ),
+                ),
+              ),
+              if (_advanced) ...[
+                _ColorSlider(
+                  key: const Key('hue'),
+                  label: l10n.hue,
+                  value: color.hue,
+                  max: 360,
+                  colors: [
+                    for (var hue = 0; hue <= 360; hue += 60)
+                      HSLColor.fromAHSL(1, hue.toDouble(), 1, 0.5).toColor(),
+                  ],
+                  onChanged: (hue) => _set(color.withHue(hue)),
+                ),
+                _ColorSlider(
+                  key: const Key('saturation'),
+                  label: l10n.saturation,
+                  value: color.saturation,
+                  colors: [
+                    color.withSaturation(0).toColor(),
+                    color.withSaturation(1).toColor(),
+                  ],
+                  onChanged: (saturation) =>
+                      _set(color.withSaturation(saturation)),
+                ),
+                _ColorSlider(
+                  key: const Key('lightness'),
+                  label: l10n.lightness,
+                  value: color.lightness,
+                  colors: [Colors.black, pure, Colors.white],
+                  onChanged: (lightness) =>
+                      _set(color.withLightness(lightness)),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: picked,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: scheme.outlineVariant),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        key: const Key('colorCode'),
+                        controller: _code,
+                        onChanged: _typeCode,
+                        maxLength: 6,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp('[0-9a-fA-F]'),
+                          ),
+                        ],
+                        decoration: InputDecoration(
+                          isDense: true,
+                          labelText: l10n.colorCode,
+                          prefixText: '#',
+                          counterText: '',
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

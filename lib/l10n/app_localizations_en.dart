@@ -254,4 +254,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get choiceName => 'Choice name';
+
+  @override
+  String get themeColors => 'Theme colors';
+
+  @override
+  String get customColor => 'Custom color';
 }

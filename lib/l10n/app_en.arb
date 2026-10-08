@@ -72,5 +72,7 @@
   "lightness": "Lightness",
   "colorCode": "Color code",
   "ok": "OK",
-  "choiceName": "Choice name"
+  "choiceName": "Choice name",
+  "themeColors": "Theme colors",
+  "customColor": "Custom color"
 }
