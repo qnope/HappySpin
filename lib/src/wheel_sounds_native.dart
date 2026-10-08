@@ -43,20 +43,35 @@ class PlatformWheelSounds implements WheelSounds {
       // Not every platform lets the audio context be changed.
       debugPrint('HappySpin: audio context not set: $error');
     }
-    final ticks = [
-      for (var i = 0; i < _voices; i++)
-        await _player('sounds/tick.wav', PlayerMode.lowLatency),
-    ];
-    _chime = await _player('sounds/stop.wav', PlayerMode.mediaPlayer);
-    _ticks.addAll(ticks);
+    final players = <AudioPlayer>[];
+    try {
+      for (var i = 0; i < _voices; i++) {
+        players.add(await _player('sounds/tick.wav', PlayerMode.lowLatency));
+      }
+      players.add(await _player('sounds/stop.wav', PlayerMode.mediaPlayer));
+    } on Object {
+      // The next spin loads them all again: let go of the ones made so far
+      // rather than keep them around for nothing.
+      for (final player in players) {
+        player.dispose().ignore();
+      }
+      rethrow;
+    }
+    _chime = players.removeLast();
+    _ticks.addAll(players);
   }
 
   Future<AudioPlayer> _player(String asset, PlayerMode mode) async {
     final player = AudioPlayer();
-    // Keep the sound loaded once played, ready for the next time.
-    await player.setReleaseMode(ReleaseMode.stop);
-    await player.setPlayerMode(mode);
-    await player.setSource(AssetSource(asset));
+    try {
+      // Keep the sound loaded once played, ready for the next time.
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.setPlayerMode(mode);
+      await player.setSource(AssetSource(asset));
+    } on Object {
+      player.dispose().ignore();
+      rethrow;
+    }
     return player;
   }
 
@@ -77,6 +92,11 @@ class PlatformWheelSounds implements WheelSounds {
   Future<void> _play(AudioPlayer player, double volume) async {
     if (!_starting.add(player)) return;
     try {
+      // Rewinds the sound before playing it again. Android never tells a
+      // low latency player that its sound ended, so without this the player
+      // thinks it is still playing and ignores every later resume: the
+      // ticks went silent once each player had played once.
+      await player.stop();
       await player.setVolume(volume);
       await player.resume();
     } on Object catch (error) {
