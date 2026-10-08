@@ -43,7 +43,7 @@ Le workflow `.github/workflows/ci-cd.yml` tourne sur chaque PR et chaque push su
 
 - analyse, format et tests unitaires
 - tests d'intégration dans Chrome
-- builds Android (APK en artefact), iOS (sans signature) et web
+- builds Android (APK arm64 en artefact), iOS (sans signature) et web
 - sur `main`, déploiement du build web sur GitHub Pages si tout est vert
 
 ## Structure
